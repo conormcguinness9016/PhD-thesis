@@ -35,7 +35,7 @@ print("read in enzyme information")
 
 
 library(GenomicFeatures)
-f1<-scan("FoundationOneGenes", what = "", sep = " ")
+f1<-scan("FoundationOneGenes.txt", what = "", sep = " ")
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 exons<-exonsBy(TxDb.Hsapiens.UCSC.hg19.knownGene, "gene")
 library(biomaRt)

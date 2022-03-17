@@ -54,15 +54,15 @@ RElist<-RElist[!str_detect(RElist$Enzyme, "Nb\\."),]
 RElist<-RElist[!str_detect(RElist$Enzyme, "Nt\\."),]
 Enzymes<-RElist$Sequence
 names(Enzymes)<-RElist$Enzyme
-source("Rfunctions/fraglibgenfunction.R")
-
+names(Enzymes)<-str_extract(names(Enzymes), "\\w{1,}\\p{Uppercase}")
+Enzymes<-Enzymes[!duplicated(names(Enzymes))]
+####tst with just 10 enzymes
+#Enzymes<-Enzymes[1:10]
+source("fraglibgenfunction.R")
 enzdat<-enzyme_info_gen(Enzymes, enzymedata = TRUE)
-enz<-str_extract(enzdat$Library, "\\w{1,}\\p{Uppercase}")
-enzdat<-enzdat[!duplicated(enz),]
-
 
 frags<-frag_lib_generation(enzdat,Hsapiens, chroms=c(1:24))
-#saveRDS(frags, "frags.RDS")
+saveRDS(frags, "frags.RDS")
 REfraglibs<-lapply(frags$REfraglibs, function(x){
   x$chr <- replace(x[,chr], which(x[,chr] == "chr24"), "chrY")
   x$chr <- replace(x[,chr], which(x[,chr] == "chr23"), "chrX")
@@ -72,71 +72,9 @@ REfraglibs<-lapply(REfraglibs, function(x){
   x[chr %in% names(Hsapiens)[1:24],]
 })
 REfraglibs<-REfraglibs[lapply(REfraglibs, function(x){nrow(x)}) >0]
-#saveRDS(REfraglibs, "REfraglibs.RDS")
+saveRDS(REfraglibs, "REfraglibs.RDS")
 
 
-mutinfofrags<-function(x, mutrate=FALSE, libs = NULL ){
-  RE.gr=makeGRangesFromDataFrame(data.frame(x), keep.extra.columns = TRUE)
-  overlap.gr<-subsetByOverlaps(BRCAgenoms.gr, RE.gr)
-  overlap_vr = VRanges(
-    seqnames = seqnames(overlap.gr),
-    ranges = ranges(overlap.gr),
-    ref = overlap.gr$Ref,
-    alt = overlap.gr$Alt,
-    sampleNames = overlap.gr$Sample,
-    study = names(data.frame(x)[3]))
-  overlap_motifs<-mutationContext(overlap_vr, BSgenome.Hsapiens.UCSC.hg19)
-  btab<-as.data.table(BRCA_motifs)
-  btab$Context<-"Other"
-  btab$Context[btab$context =="T.A" & btab$alteration=="CT"]<-"APOBEC"
-  btab$Context[btab$context =="T.T" & btab$alteration=="CT"]<-"APOBEC"
-  btab$Context[btab$context =="T.A" & btab$alteration=="CG"]<-"APOBEC"
-  btab$Context[btab$context =="T.T" & btab$alteration=="CG"]<-"APOBEC"
-  dfprops<-data.frame(prop.table(table(btab$Context, btab$sampleNames),2))
-  dfprops<-subset(dfprops, Var1 == "APOBEC")
-  dfprops$APOBECHyper[dfprops$Freq>0.4]<-"APOBEC_hyper"
-  dfprops$APOBECHyper[dfprops$Freq<0.4]<-"APOBEC_typical"
-  dfprops$APOBECHyper<-fct_relevel(dfprops$APOBECHyper,c("APOBEC_typical", "APOBEC_hyper"))
-  
-  overlap_mm = motifMatrix(overlap_motifs, group = "sampleNames", normalize = TRUE)
-  overlapmatrix = motifMatrix(overlap_motifs, group = "sampleNames", normalize = FALSE)
-  nmutswgs<-colSums(BRCAmatrix)
-  df<-data.table(Sample = names(nmutswgs))
-  df$nmutswgs<-nmutswgs
-  l<-length(nmutswgs)
-  om<-matrix(rep(0, nrow(overlap_mm)*length(nmutswgs)),  nrow=nrow(overlap_mm), ncol=length(nmutswgs))
-  om<-data.table(om)
-  overlap_mm<-data.table(overlap_mm)
-  om[,which(names(nmutswgs) %in% colnames(overlap_mm))]<-overlap_mm
-  overlap_mm<-om
-  om<-matrix(rep(0, nrow(overlapmatrix)*length(nmutswgs)),  nrow=nrow(overlapmatrix), ncol=length(nmutswgs))
-  om<-data.table(om)
-  overlapmatrix<-data.table(overlapmatrix)
-  om[,which(names(nmutswgs) %in% colnames(overlapmatrix))]<-overlapmatrix
-  overlapmatrix<-om
-  cosmat<-cos_sim_matrix(overlap_mm,BRCA_mm)
-  df$cosimdiag<-c(diag(cosmat))
-  df$cosimdiag[is.nan(df$cosimdiag)]<-0
-  df$nmutsgbs<-colSums(overlapmatrix)
-  if( typeof(x) == "list" && ncol(x)> 4){
-    df$Library<-rep(as.character(x[1,5]), nrow(df))
-  } else if( !is.null(libs) ) {
-    df$Library<-rep(libs, nrow(df))
-  } else {
-    print("Warning: no library names provided")
-  }
-  if(mutrate == TRUE){
-    gbscov<-sum(width(GenomicRanges::reduce(RE.gr)))
-    wgscov<-sum(seqlengths(Hsapiens)[1:24])
-    df$mutrategbs<-(df$nmutsgbs*10^6)/gbscov
-    df$mutratewgs<-(nmutswgs*10^6)/wgscov
-
-  } else{
-    
-    print("Mutation rate not computed")
-    df
-  }
-}
 
 mutinfofragsnew<-function(x, mutrate=FALSE, libs = NULL ){
   RE.gr=makeGRangesFromDataFrame(data.frame(x), keep.extra.columns = TRUE)
@@ -188,7 +126,6 @@ mutinfofragsnew<-function(x, mutrate=FALSE, libs = NULL ){
     df$ptnamegbs<-dfprops$Var2
     df
   } else{
-    
     print("Mutation rate not computed")
     df
   }
@@ -198,7 +135,6 @@ mutinfofragsnew<-function(x, mutrate=FALSE, libs = NULL ){
 
 
 
-REfraglibs<-REfraglibs[lapply(REfraglibs, function(x){nrow(x)}) >0]
 BRCA_motifs<-readRDS("BRCA_motifs.RDS")
 btab<-as.data.table(BRCA_motifs)
 
@@ -233,7 +169,7 @@ AllEnzInfo<-mclapply(REfraglibs, function(x){
 
 
 library(GenomicFeatures)
-f1<-scan("FoundationOneGenes", what = "", sep = " ")
+f1<-scan("FoundationOneGenes.txt", what = "", sep = " ")
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 exons<-exonsBy(TxDb.Hsapiens.UCSC.hg19.knownGene, "gene")
 library(biomaRt)
@@ -248,7 +184,8 @@ f1ranges<-exons[which(names(exons) %in% geneinfo$entrezgene_id)]
 F1Info<-mutinfofragsnew(f1ranges, mutrate=TRUE, libs = "F1")
 AllEnzInfo<-c(AllEnzInfo,list(F1Info))
 names(AllEnzInfo)<-unlist(lapply(AllEnzInfo, function(x){x[1,5]}))
-AllEnzInfo
+
 
 saveRDS(AllEnzInfo, "AllEnzInfo.RDS")
+
 
