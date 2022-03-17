@@ -1,7 +1,4 @@
-setwd("/Volumes/archive/cancergeneticslab/ConorM/InSilicoRADseq/")
-#AcuI<-read.csv("AcuI.csv")
-#AcuI<-data.frame(REfraglibs$AcuI) not run, but this is how i got just AcuI out
-#AcuI<-AcuI[1:3]
+setwd("/Volumes/archive/cancergeneticslab/ConorM/RADSeqPaper/")
 
 library(devtools)
 library(stringr)
@@ -278,30 +275,30 @@ ggsave(plot=Apoclass,"figs/RandomMutsVsCosineSimAPOBEC_class.png",width=10,heigh
 Apoclass
 
 
-# expo<-NULL
-# 
-# now<-sys.time()
-# i<-1
-# while(i<10){
-#   rando<-NULL
-#   print(paste("Processing", i))
-#   rando<-data.table(mclapply(seq(10,800,by=10), randsample, mc.cores=4))
-#   oss<-mclapply(rando$V1, mutinfo,mc.cores =8)
-#   rm(rando)
-#   allrands<-bind_rows(oss)
-#   expo[[i]]<-allrands
-#   rm(oss)
-#   rm(allrands)
-#   i<-i+1
-# }
-# then<-Sys.time()
-# 
-# timenew<-then - now
-# 
-# 
-# bleurgh<-data.table(bind_rows(expo))
-# bleurgh<-bleurgh[!is.nan(cosimdiag)]
-# saveRDS(bleurgh, "RandomEnzInfo800_scaledown.RDS")
+expo<-NULL
+
+
+i<-1
+while(i<10){
+  rando<-NULL
+  print(paste("Processing", i))
+  rando<-data.table(mclapply(seq(10,800,by=10), randsample, mc.cores=12))
+  oss<-mclapply(rando$V1, mutinfo,mc.cores =8)
+  rm(rando)
+  allrands<-bind_rows(oss)
+  expo[[i]]<-allrands
+  rm(oss)
+  rm(allrands)
+  i<-i+1
+}
+then<-Sys.time()
+
+timenew<-then - now
+
+
+bleurgh<-data.table(bind_rows(expo))
+bleurgh<-bleurgh[!is.nan(cosimdiag)]
+saveRDS(bleurgh, "RandomEnzInfo800_scaledown.RDS")
 bleurgh<-readRDS("RandomEnzInfo800_scaledown.RDS")
 #bleurgh<-bleurgh[sample.int(nrow(bleurgh), 10000),]
 bleurgh$APOBECHyper<-dfprops$APOBECHyper[match(bleurgh$Sample, dfprops$Var2)]
@@ -425,3 +422,4 @@ ggsave(plot = grid2,"figs/Figure2.png", width =10, height =8)
 grid3<-plot_grid(MLplot,TMB_APO,align="v",axis = "lr",ncol=1)
 grid3
 ggsave(plot = grid3,"figs/Figure3.png", width =10, height =8)
+

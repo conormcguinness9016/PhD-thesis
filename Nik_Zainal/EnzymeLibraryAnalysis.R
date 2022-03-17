@@ -26,23 +26,12 @@ REfraglibs<-readRDS("REfraglibs.RDS")
 REfraglibs<-REfraglibs[lapply(REfraglibs, function(x){nrow(x)}) >0]
 AllEnzInfo<-readRDS("AllEnzInfo.RDS")
 dfprops<-readRDS("dfprops.RDS")
-F1<-AllEnzInfo$F1
+
 
 print("read in enzyme information")
 
 
-# AllEnzInfo<-AllEnzInfo[lapply(seq(AllEnzInfo), function(x){
-#   df<-AllEnzInfo[[x]]
-#   median(df$nmutsgbs)
-# })>10]
-# AllEnzInfo<-AllEnzInfo[lapply(seq(AllEnzInfo), function(x){
-#   df<-AllEnzInfo[[x]]
-#   median(df$nmutsgbs)
-# })<5000]
-# AllEnzInfo<-AllEnzInfo[lapply(seq(AllEnzInfo), function(x){
-#   df<-AllEnzInfo[[x]]
-#   max(df$nmutsgbs)
-# })<10000]
+
 
 
 library(GenomicFeatures)
@@ -55,32 +44,25 @@ library(stringr)
 geneinfo<-getBM(ensembl,filters = "hgnc_symbol", attributes = c("hgnc_id", "hgnc_symbol", "entrezgene_id"), values = f1)
 geneinfo$entrezgene_id <- as.character(geneinfo$entrezgene_id)
 f1ranges<-exons[which(names(exons) %in% geneinfo$entrezgene_id)]
-# covs<-mclapply(seq(REfraglibs),function(x){
-#   if(nrow(REfraglibs[[x]])>0){
-#   print(x)
-#   RE.gr<-makeGRangesFromDataFrame(REfraglibs[[x]])
-#   gbscov<-sum(width(GenomicRanges::reduce(RE.gr)))
-#   data.frame(Library=REfraglibs[[x]]$Library[1],gbscov)}
-# }, mc.cores = 10)
+covs<-mclapply(seq(REfraglibs),function(x){
+   if(nrow(REfraglibs[[x]])>0){
+   print(x)
+   RE.gr<-makeGRangesFromDataFrame(REfraglibs[[x]])
+   gbscov<-sum(width(GenomicRanges::reduce(RE.gr)))
+   data.frame(Library=REfraglibs[[x]]$Library[1],gbscov)}
+ }, mc.cores = 10)
 
-# covs<-bind_rows(covs)
-# covs<-bind_rows(covs,data.frame(Library="F1", gbscov=sum(sum(width(GenomicRanges::reduce(f1ranges))))))
-# covs$Library<-str_extract(covs$Library, "\\w{1,}\\p{Uppercase}")
-# covs$Library[length(covs$Library)]<-"F1"
-# covs<-covs[!duplicated(covs$Library),]
-# covs<-covs[order(covs$gbscov),]
-# covs
-# saveRDS(covs,"covs.RDS")
+ covs<-bind_rows(covs)
+ covs<-bind_rows(covs,data.frame(Library="F1", gbscov=sum(sum(width(GenomicRanges::reduce(f1ranges))))))
+ covs$Library<-str_extract(covs$Library, "\\w{1,}\\p{Uppercase}")
+ covs$Library[length(covs$Library)]<-"F1"
+ covs<-covs[!duplicated(covs$Library),]
+ covs<-covs[order(covs$gbscov),]
+ covs
+saveRDS(covs,"covs.RDS")
 covs<-readRDS("covs.RDS")
 
-AllEnzInfo$F1<-F1
-names(AllEnzInfo)
-
-enz<-str_extract(names(AllEnzInfo), "\\w{1,}\\p{Uppercase}")
-enz[length(enz)]<-"F1"
-AllEnzInfo<-AllEnzInfo[!duplicated(enz)]
-enz<-str_extract(names(AllEnzInfo), "\\w{1,}\\p{Uppercase}")
-enz[length(enz)]<-"F1"
+enz<-names(AllEnzInfo)
 for(i in seq(AllEnzInfo)){
   AllEnzInfo[[i]]$APOBECHyper<-dfprops$APOBECHyper[match(AllEnzInfo[[i]]$Sample, dfprops$Var2)]
   AllEnzInfo[[i]]$diff<-AllEnzInfo[[i]]$mutrategbs-AllEnzInfo[[i]]$mutratewgs
@@ -95,7 +77,7 @@ for(i in seq(AllEnzInfo)){
   AllEnzInfo[[i]]$mutclassgbs[AllEnzInfo[[i]]$mutrategbs<5]<-"Low (<5muts/Mb)"
   AllEnzInfo[[i]]$arctan<-abs((pi/4)-atan2(AllEnzInfo[[i]]$mutratewgs,AllEnzInfo[[i]]$mutrategbs))
 }
-names(AllEnzInfo)<-enz
+AllEnzInfo
 
 F1cov<-sum(sum(width(GenomicRanges::reduce(f1ranges))))
 wgscov<-sum(seqlengths(Hsapiens)[1:24])
