@@ -54,13 +54,17 @@ RElist<-RElist[!str_detect(RElist$Enzyme, "Nb\\."),]
 RElist<-RElist[!str_detect(RElist$Enzyme, "Nt\\."),]
 Enzymes<-RElist$Sequence
 names(Enzymes)<-RElist$Enzyme
+
 ##get just the enzyme name, remove high fidelity enzymes
+
+
 names(Enzymes)<-str_extract(names(Enzymes), "\\w{1,}\\p{Uppercase}")
 Enzymes<-Enzymes[!duplicated(names(Enzymes))]
 ####tst with just 10 enzymes
 #Enzymes<-Enzymes[1:10]
 source("fraglibgenfunction.R")
 enzdat<-enzyme_info_gen(Enzymes, enzymedata = TRUE)
+
 
 #saveRDS(enzdat, "enzdat.RDS")
 enzdat<-readRDS("enzdat.RDS")
@@ -70,6 +74,10 @@ read.csv("enzdat.csv")
 frags<-frag_lib_generation(enzdat,Hsapiens, chroms=c(1:24))
 #saveRDS(frags, "frags.RDS")
 frags<-readRDS("frags.RDS")
+
+frags<-frag_lib_generation(enzdat,Hsapiens, chroms=c(1:24))
+saveRDS(frags, "frags.RDS")
+
 
 frags<-frag_lib_generation(enzdat,Hsapiens, chroms=c(1:24))
 saveRDS(frags, "frags.RDS")
@@ -85,12 +93,12 @@ REfraglibs<-lapply(REfraglibs, function(x){
   x[chr %in% names(Hsapiens)[1:24],]
 })
 REfraglibs<-REfraglibs[lapply(REfraglibs, function(x){nrow(x)}) >0]
-<<<<<<< HEAD
+
 length(REfraglibs)
 #saveRDS(REfraglibs, "REfraglibs.RDS")
-=======
+
 saveRDS(REfraglibs, "REfraglibs.RDS")
->>>>>>> ca06e9d26f4fd3802b1d05a3372e303e6c97de77
+
 
 
 
@@ -202,13 +210,12 @@ f1ranges<-exons[which(names(exons) %in% geneinfo$entrezgene_id)]
 F1Info<-mutinfofragsnew(f1ranges, mutrate=TRUE, libs = "F1")
 AllEnzInfo<-c(AllEnzInfo,list(F1Info))
 names(AllEnzInfo)<-unlist(lapply(AllEnzInfo, function(x){x[1,5]}))
-<<<<<<< HEAD
-=======
 
->>>>>>> ca06e9d26f4fd3802b1d05a3372e303e6c97de77
 
 
 #saveRDS(AllEnzInfo, "AllEnzInfo.RDS")
+
+
 
 
 
