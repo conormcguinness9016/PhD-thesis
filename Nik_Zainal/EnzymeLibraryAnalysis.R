@@ -22,11 +22,13 @@ library(gtable)
 library(grid)
 library(parallel)
 library(ggrepel)
-REfraglibs<-readRDS("REfraglibs.RDS")
-REfraglibs<-REfraglibs[lapply(REfraglibs, function(x){nrow(x)}) >0]
+setwd("Nik_Zainal/")
+
+#REfraglibs<-readRDS("REfraglibs.RDS")
+#REfraglibs<-REfraglibs[lapply(REfraglibs, function(x){nrow(x)}) >0]
 AllEnzInfo<-readRDS("AllEnzInfo.RDS")
 dfprops<-readRDS("dfprops.RDS")
-
+dfprops
 
 print("read in enzyme information")
 
@@ -35,7 +37,7 @@ print("read in enzyme information")
 
 
 library(GenomicFeatures)
-f1<-scan("FoundationOneGenes", what = "", sep = " ")
+f1<-scan("FoundationOneGenes.txt", what = "", sep = " ")
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 exons<-exonsBy(TxDb.Hsapiens.UCSC.hg19.knownGene, "gene")
 library(biomaRt)
@@ -78,7 +80,7 @@ for(i in seq(AllEnzInfo)){
   AllEnzInfo[[i]]$arctan<-abs((pi/4)-atan2(AllEnzInfo[[i]]$mutratewgs,AllEnzInfo[[i]]$mutrategbs))
 }
 AllEnzInfo
-
+saveRDS(AllEnzInfo, "AllEnzInfo.RDS")
 F1cov<-sum(sum(width(GenomicRanges::reduce(f1ranges))))
 wgscov<-sum(seqlengths(Hsapiens)[1:24])
 
@@ -88,7 +90,7 @@ MLcors<-lapply(seq(length(AllEnzInfo)), function(x){
   Library<-df$Library[1]
   gbscov<-covs$gbscov[covs$Library %in% Library]
   mean_nmutsgbs<-mean(df$nmutsgbs)
-  if(mean_nmutsgbs>2 & gbscov < wgscov*10/100){
+  if(mean_nmutsgbs>2){
     median_nmutsgbs<-median(df$nmutsgbs)
     median_diff<-median(abs(df$diff))
     median_arctan<-median(df$arctan)
@@ -110,7 +112,8 @@ MLcors<-lapply(seq(length(AllEnzInfo)), function(x){
                Fupr=var$conf.int[2],
                t=t$statistic,
                t.pval=t$p.value)
-  }})
+ }
+  })
 MLcors<-bind_rows(MLcors)
 MLcors$cor.adj.p<-p.adjust(MLcors$cor.p.val)
 MLcors$F.adj.p<-p.adjust(MLcors$Fp.val)
@@ -123,7 +126,7 @@ CorPlot<-ggplot(MLcors, aes(log2(gbscov),cor)) + geom_point(size=3)+
   xlab("Library Coverage(log2 scale)")+ylim(c(0,1))
 CorPlot
 ggsave(plot=CorPlot, "figs/Enzymesrep/CorPlot.png",width=22,height=14)
-MLcors<-MLcors[MLcors$cor>0.9,]
+#MLcors<-MLcors[MLcors$cor>0.9,]
 AllEnzInfo<-AllEnzInfo[names(AllEnzInfo) %in% MLcors$Library]
 AllEnzInfo
 saveRDS(AllEnzInfo, "AllEnzInfofilt.RDS")
@@ -246,16 +249,16 @@ AllEnzCosineplotAPO<-ggplot(AllEnzInfobound, aes(reorder(Library, nmutsgbs), cos
   guides(colour=guide_legend(title="APOBEC \nsignature status"),
          fill=guide_legend(title="APOBEC \nsignature status"),
          override.aes=list(alpha=1))+ylab("Cosine similarity \n to WGS profile")+xlab("Library")
-AllEnzMutsplot<-ggplot(AllEnzInfobound, aes(reorder(Library, nmutsgbs), log10(nmutsgbs))) + geom_boxplot(outlier.shape = NA) + 
+AllEnzMutsplot<-ggplot(AllEnzInfobound, aes(reorder(Library, nmutsgbs), nmutsgbs)) + geom_boxplot(outlier.shape = NA) + 
   geom_point(alpha = 0.025)+
   scale_colour_manual(values=c("blue", "red"))+
-  theme(axis.text.x = element_text(angle=90,hjust = 1,vjust=0.5),axis.text=element_text( size =10), axis.title = element_text(size=15))+ylab("Number of mutations \ndetected (log scale))")+xlab("Library")
+  theme(axis.text.x = element_text(angle=90,hjust = 1,vjust=0.5),axis.text=element_text( size =10), axis.title = element_text(size=15))+
+  ylab("Number of mutations \ndetected (log10 scale))")+xlab("Library")+
+  scale_y_continuous(trans='log10')
 ggsave(plot=AllEnzMutsplot, "figs/Enzymes/AllEnzMutsplot.png",width=22, height =8)
 ggsave(plot=AllEnzCosineplotAPO, "figs/Enzymes/AllEnzCosineplotAPO.png",width=22,height=8)
 Supp_fig1<-plot_grid(AllEnzMutsplot,AllEnzCosineplot,AllEnzCosineplotAPO,prop_plot_enzymes_APO,align="v", axis="lr",ncol=1)
 ggsave(plot=Supp_fig1, "figs/Enzymes/Supp_fig1.png",width=22,height=18)
-
-
 
 
 
@@ -311,7 +314,7 @@ CorPlotgrid<-CorPlot+theme(axis.text.x = element_blank(),axis.title.x = element_
 AllEnzabsdiffplotgrid<-AllEnzabsdiffplot+theme(axis.text.x = element_blank(),axis.title.x = element_blank())+ylim(c(0,10))
 AllEnzMutsplotgrid<-AllEnzMutsplot+theme(axis.text.x = element_blank(),axis.title.x = element_blank())
 Supp_fig_3<-plot_grid(AllEnzArctanplot, AllEnzabsdiffplot+ylim(c(0,10)), align="v",axis="lr",ncol=1)
-ggsave(plot=Supp_fig_3, "figs/Enzymes/Supp_fig3.png",width=22,height=18)
+ggsave(plot=Supp_fig_3, "figs/Enzymes/Supp_fig3.png",width=22,height=12)
 
 
 

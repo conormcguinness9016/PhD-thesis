@@ -26,13 +26,13 @@ dfprops<-readRDS("dfprops.RDS")
 covs<-readRDS("covs.RDS")
 takeoff<-readRDS("takeoff.RDS")
 MLcors<-readRDS("MLcors.RDS")
-
+wgscov<-sum(seqlengths(Hsapiens)[1:24])
 
 enz<-names(AllEnzInfo)
 covs<-covs[covs$Library %in% enz,]
 enz
 reps<-covs$Library[round(seq(1,nrow(covs),length.out = 9))]
-reps[10:12]<-c("F1","KpnI","SpeI")
+reps[9:12]<-c("MspI","F1","KpnI","SpeI")
 reps
 takeoff<-takeoff[takeoff$Library %in% reps,]
 AllEnzInfobound<-bind_rows(AllEnzInfo)
@@ -100,20 +100,21 @@ AllEnzCosineplotAPO<-ggplot(AllEnzInfobound, aes(reorder(Library, nmutsgbs), cos
   guides(colour=guide_legend(title="APOBEC \nsignature status"),
          fill=guide_legend(title="APOBEC \nsignature status"),
          override.aes=list(alpha=1))+ylab("Cosine similarity \n to WGS profile")+xlab("Library")
-AllEnzMutsplot<-ggplot(AllEnzInfobound, aes(reorder(Library, nmutsgbs), log10(nmutsgbs))) + geom_boxplot(outlier.shape = NA) + 
+AllEnzMutsplot<-ggplot(AllEnzInfobound, aes(reorder(Library, nmutsgbs), nmutsgbs)) + geom_boxplot(outlier.shape = NA) + 
   geom_jitter(alpha = 0.25,width=0.1)+
   scale_colour_manual(values=c("blue", "red"))+
   theme(#plot.margin = unit(c(1.5,1,1,1), "lines"),
     axis.title = element_text(size = 25), axis.text =  element_text(size = 22),
     axis.text.x=element_text(vjust=0.5),
     legend.text = element_text(size = 22), legend.title = element_text(size = 25))+
-  ylab("Number of mutations \ndetected (log10 scale)")+xlab("Library")
+  ylab("Number of mutations \ndetected (log10 scale)")+xlab("Library")+
+  scale_y_continuous(trans='log10')
 ggsave(plot=AllEnzMutsplot, "figs/Enzymesrep/AllEnzMutsplot.png",width=22, height =8)
 ggsave(plot=AllEnzCosineplotAPO, "figs/Enzymesrep/AllEnzCosineplotAPO.png",width=22,height=8)
 Fig3<-plot_grid(AllEnzMutsplot,AllEnzCosineplot,prop_plot_enzymes_all,align="v", axis="lr",ncol=1)
 ggsave(plot=Fig3, "figs/Enzymesrep/Fig3.png",width=22,height=14)
 Fig4<-plot_grid(AllEnzMutsplot,AllEnzCosineplot,AllEnzCosineplotAPO,prop_plot_enzymes_APO,align="v", axis="lr",ncol=1)
-ggsave(plot=Fig4, "figs/Enzymesrep/Fig4.png",width=22,height=18)
+ggsave(plot=Fig4, "figs/Enzymesrep/Fig4.png",width=22,height=19)
 
 
 
@@ -188,21 +189,13 @@ ggsave(plot=AllEnzArctanplotAPO, "figs/Enzymesrep/AllEnzArctanplotAPO.png",width
 libs<-c("F1","SpeI")
 MLcors<-readRDS("MLcors.RDS")
 
-CorPlot<-ggplot(MLcors, aes(log2(gbscov),cor)) + geom_point(size=3)+
-  geom_point(data=MLcors[MLcors$Library=="F1",], aes(log2(gbscov),cor),col="red", size=5)+
-  theme(axis.title = element_text(size = 30), axis.text =  element_text(size = 25),
-        axis.text.x=element_text(vjust=0.5),
-        legend.text = element_text(size = 25), legend.title = element_text(size = 30),strip.text = element_text(size = 30))+
-  ylab("Correlation to WGS \nTMB estimate")+
-  xlab("Library Coverage(log2 scale)")+ylim(c(0,1))
-CorPlot
-ggsave(plot=CorPlot, "figs/Enzymesrep/CorPlot.png",width=30,height=14)
+
 
 AllEnzInfo<-readRDS("AllEnzInfo.RDS")
-AllEnzInfobound<-bind_rows(AllEnzInfobound)
+AllEnzInfobound<-bind_rows(AllEnzInfo)
 ssEnz<-AllEnzInfobound[AllEnzInfobound$Library %in% libs,]
 ssEnz
-ssEnz$Library<-factor(ssEnz$Library, c("F1","SpeI"))
+ssEnz$Library<-factor(ssEnz$Library, libs)
 corplotLibsF1<-ggplot(ssEnz, aes(mutratewgs,mutrategbs,col=Library))+
   geom_point(alpha=0.25,size=5)+geom_abline(aes(intercept=0, slope=1))+
   xlab("Mutation rate (mutations/Mb)")+ylab("Mutation rate estimate \nfrom Library (mutations/Mb)")+
@@ -222,12 +215,23 @@ corplotLibsF1lim
 
 MLcors<-readRDS("MLcors.RDS")
 
-MLcors<-MLcors[MLcors$cor>0.9,]
+
 MLcors$cor.adj.p<-p.adjust(MLcors$cor.p.val)
 MLcors$F.adj.p<-p.adjust(MLcors$Fp.val)
-
-
-arctan_mod<-lm(log2(median_arctan) ~ log2(gbscov),MLcors)
+MLcors$pct.genom<-MLcors$gbscov*100/wgscov
+MLcors$pct.genom
+CorPlot<-ggplot(MLcors, aes(pct.genom,cor)) + geom_point(size=3)+
+  geom_point(data=MLcors[MLcors$Library=="F1",], aes(pct.genom,cor),col="red", size=5)+
+  geom_point(data=MLcors[MLcors$Library=="SpeI",], aes(pct.genom,cor),col="blue", size=5)+
+  theme(axis.title = element_text(size = 30), axis.text =  element_text(size = 25),
+        axis.text.x=element_text(vjust=0.5),
+        legend.text = element_text(size = 25), legend.title = element_text(size = 30),strip.text = element_text(size = 30))+
+  ylab("Correlation to WGS \nTMB estimate")+
+  xlab("Percentage genome captured \n(log2 scale)")+ylim(c(0,1))+scale_x_continuous(trans = 'log2')
+CorPlot
+#MLcors<-MLcors[MLcors$cor>0.9,]
+ggsave(plot=CorPlot, "figs/Enzymesrep/CorPlot.png",width=30,height=14)
+arctan_mod<-lm(log2(median_arctan) ~ log2(pct.genom),MLcors)
 eq_arctan<-summary(arctan_mod)
 AdjR2_arctan<-eq_arctan$adj.r.squared
 r_arctan<-eq_arctan$coefficients[2,1]
@@ -235,52 +239,77 @@ p_arctan<-eq_arctan$coefficients[2,4]
 annot<-paste0("Adjusted R^2=",signif(AdjR2_arctan,3),
               "\np=",signif(p_arctan,3))
 MLcors$estim_arctan<-log2(MLcors$median_arctan)-eq_arctan$coefficients[2,1]*log2(MLcors$gbscov)-eq_arctan$coefficients[1,1]
-d<-seq(from=min(MLcors$gbscov),to=max(MLcors$gbscov),length.out = 10000)
-df<-data.frame(gbscov=d)
-dfnew<-data.frame(gbscov=d,2^predict(arctan_mod,newdata=df,interval='confidence'))
-Arctanplot<-ggplot(MLcors,aes(log2(gbscov),median_arctan))+  
-  geom_line(data=dfnew,(aes(log2(gbscov), fit)),col="blue")+
-  geom_line(data=dfnew,(aes(log2(gbscov), lwr)),col="blue",linetype="dotted")+
-  geom_line(data=dfnew,(aes(log2(gbscov), upr)),col="blue",linetype="dotted")+
+d<-seq(from=min(MLcors$pct.genom),to=max(MLcors$pct.genom),length.out = 10000)
+df<-data.frame(pct.genom=d)
+dfnew<-data.frame(pct.genom=d,2^predict(arctan_mod,newdata=df,interval='confidence'))
+Arctanplot<-ggplot(MLcors,aes(pct.genom,median_arctan))+  
+  geom_line(data=dfnew,(aes(pct.genom, fit)),col="blue")+
+  geom_line(data=dfnew,(aes(pct.genom, lwr)),col="blue",linetype="dotted")+
+  geom_line(data=dfnew,(aes(pct.genom, upr)),col="blue",linetype="dotted")+
   geom_point(size=3)+
-  geom_point(data=MLcors[MLcors$Library=="F1",], aes(log2(gbscov),median_arctan),col="red", size=5)+
+  geom_point(data=MLcors[MLcors$Library=="F1",], aes(pct.genom,median_arctan),col="red", size=5)+
   geom_text(aes(label=ifelse(Library=="F1",as.character(Library),'')),size=10,hjust=-0.3,col="red")+
+  geom_point(data=MLcors[MLcors$Library=="SpeI",], aes(pct.genom,median_arctan),col="blue", size=5)+
+  geom_text(aes(label=ifelse(Library=="SpeI",as.character(Library),'')),size=10,hjust=-0.3,col="blue")+
   theme(#plot.margin = unit(c(1.5,1,1,1), "lines"),
     axis.title = element_text(size = 30), axis.text =  element_text(size = 25),
     axis.text.x=element_text(vjust=0.5),
     legend.text = element_text(size = 12), legend.title = element_text(size = 14))+
   geom_text(aes(label=annot,x=25,y=0.25),size=5)+
-  ylab("Median estimated \nbias of library θ")+xlab("Library Coverage (log2 scale)")
+  ylab("Median estimated \nbias of library θ")+xlab("Library Coverage (log2 scale)")+
+  scale_x_continuous(trans='log2')
 Arctanplot
-ggsave(plot=Arctanplot, "figs/Enzymes/Arctanplot.pdf",width =10,height=10)
+ggsave(plot=Arctanplot, "figs/Enzymes/Arctanplot.png",width =10,height=10)
 
-diff_mod<-lm(log2(median_diff) ~ log2(gbscov),MLcors)
+diff_mod<-lm(log2(median_diff) ~ log2(pct.genom),MLcors)
 eq_diff<-summary(diff_mod)
 AdjR2_diff<-eq_diff$adj.r.squared
 r_diff<-eq_diff$coefficients[2,1]
 p_diff<-eq_diff$coefficients[2,4]
 annot_diff<-paste0("Adjusted R^2=",signif(AdjR2_diff,3),
               "\np=",signif(p_diff,3))
-MLcors$estim_diff<-log2(MLcors$median_diff)-eq_diff$coefficients[2,1]*log2(MLcors$gbscov)-eq_diff$coefficients[1,1]
-d<-seq(from=min(MLcors$gbscov),to=max(MLcors$gbscov),length.out = 10000)
-df<-data.frame(gbscov=d)
-dfnew<-data.frame(gbscov=d,2^predict(diff_mod,newdata=df,interval='confidence'))
-diffplot<-ggplot(MLcors,aes(log2(gbscov),median_diff))+
-  geom_line(data=dfnew,(aes(log2(gbscov), fit)),col="blue")+
-  geom_line(data=dfnew,(aes(log2(gbscov), lwr)),col="blue",linetype="dotted")+
-  geom_line(data=dfnew,(aes(log2(gbscov), upr)),col="blue",linetype="dotted")+
+MLcors$estim_diff<-log2(MLcors$median_diff)-eq_diff$coefficients[2,1]*log2(MLcors$pct.genom)-eq_diff$coefficients[1,1]
+d<-seq(from=min(MLcors$pct.genom),to=max(MLcors$pct.genom),length.out = 10000)
+df<-data.frame(pct.genom=d)
+dfnew<-data.frame(pct.genom=d,2^predict(diff_mod,newdata=df,interval='confidence'))
+diffplot<-ggplot(MLcors,aes(pct.genom,median_diff))+
+  geom_line(data=dfnew,(aes(pct.genom, fit)),col="blue")+
+  geom_line(data=dfnew,(aes(pct.genom, lwr)),col="blue",linetype="dotted")+
+  geom_line(data=dfnew,(aes(pct.genom, upr)),col="blue",linetype="dotted")+
   geom_point(size=3)+
-  geom_point(data=MLcors[MLcors$Library=="F1",], aes(log2(gbscov),median_diff),col="red",size=4)+
+  geom_point(data=MLcors[MLcors$Library=="F1",], aes(pct.genom,median_diff),col="red",size=4)+
+  geom_point(data=MLcors[MLcors$Library=="SpeI",], aes(pct.genom,median_diff),col="blue",size=4)+
   geom_text(aes(label=ifelse(Library=="F1",as.character(Library),'')),size=10,hjust=-0.3,col="red")+
+  geom_text(aes(label=ifelse(Library=="SpeI",as.character(Library),'')),size=10,hjust=-0.3,col="blue")+
   theme(#plot.margin = unit(c(1.5,1,1,1), "lines"),
     axis.title = element_text(size = 30), axis.text =  element_text(size = 25),
     axis.text.x=element_text(vjust=0.5),
     legend.text = element_text(size = 12), legend.title = element_text(size = 14))+
   geom_text(aes(label=annot_diff,x=25,y=0.6),size=10)+
-  ylab("Median absolute difference \nbetween WGS TMB and \n Library TMB")+xlab("Library Coverage (log2 scale)")+ylim(c(0,1))
+  ylab("Median absolute difference \nbetween WGS TMB and \n Library TMB")+xlab("Percentage genome captured \n(log2 scale)")+ylim(c(0,1))+
+  scale_x_continuous(trans = 'log2')
+diffplot
+
 plot_grid(CorPlot,corplotLibsF1,corplotLibsF1lim,diffplot,ncol=1, align="v",axis="lr")
 ggsave("figs/Enzymesrep/Fig5.png",width=18,height=24)
+diffplotnolog<-ggplot(MLcors,aes(pct.genom,median_diff))+
+  geom_line(data=dfnew,(aes(pct.genom, fit)),col="blue")+
+  geom_line(data=dfnew,(aes(pct.genom, lwr)),col="blue",linetype="dotted")+
+  geom_line(data=dfnew,(aes(pct.genom, upr)),col="blue",linetype="dotted")+
+   geom_point(size=1)+
+  # geom_point(data=MLcors[MLcors$Library=="F1",], aes(pct.genom,median_diff),col="red",size=4)+
+  # geom_point(data=MLcors[MLcors$Library=="SpeI",], aes(pct.genom,median_diff),col="blue",size=4)+
+  # geom_text(aes(label=ifelse(Library=="F1",as.character(Library),'')),size=10,hjust=-0.3,col="red")+
+  # geom_text(aes(label=ifelse(Library=="SpeI",as.character(Library),'')),size=10,hjust=-0.3,col="blue")+
+  theme(#plot.margin = unit(c(1.5,1,1,1), "lines"),
+    axis.title = element_text(size = 30), axis.text =  element_text(size = 25),
+    axis.text.x=element_text(vjust=0.5),
+    legend.text = element_text(size = 12), legend.title = element_text(size = 14))+
+  geom_text(aes(label=annot_diff,x=25,y=0.6),size=10)+
+  ylab("Median absolute difference \nbetween WGS TMB and \n Library TMB")+xlab("Percentage genome captured")+ylim(c(0,1))
+diffplotnolog
 error<-plot_grid(Arctanplot,diffplot,nrow = 1)
+
 plot_grid(corplotLibs,error,ncol=1)
 AllEnzInfo<-readRDS("AllEnzInfofilt.RDS")
 AllEnzInfobound<-bind_rows(AllEnzInfo)
@@ -311,5 +340,5 @@ CorPlotgrid<-CorPlot+theme(axis.text.x = element_blank(),axis.title.x = element_
 AllEnzabsdiffplotgrid<-AllEnzabsdiffplot+theme(axis.text.x = element_blank(),axis.title.x = element_blank())+ylim(c(0,10))
 AllEnzMutsplotgrid<-AllEnzMutsplot+theme(axis.text.x = element_blank(),axis.title.x = element_blank())
 Fig6<-plot_grid(CorPlotgrid, AllEnzabsdiffplot, align="v",axis="lr",ncol=1)
-ggsave(plot=Fig5, "figs/Enzymesrep/Fig6.png",width=18,height=25)
-
+ggsave(plot=Fig6, "figs/Enzymesrep/Fig6.png",width=18,height=25)
+sublist<-subset(MLcors, pct.genom < 1.3 & median_diff <0.125)

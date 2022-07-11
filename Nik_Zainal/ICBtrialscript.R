@@ -22,12 +22,16 @@ library(gtable)
 library(grid)
 library(scales)
 library(pROC)
-AllEnzInfofilt<-readRDS("AllEnzInfofilt.RDS")
+library(ggpubr)
+AllEnzInfo<-readRDS("AllEnzInfo.RDS")
+libs<-c("F1","SpeI", "KpnI")
+AllEnzInfofilt<-AllEnzInfo[names(AllEnzInfo) %in% libs]
 Ahn<-length(which(AllEnzInfofilt[[1]]$APOBECHyper=="APOBEC_hyper"))
+Ahn
 set.seed(10)
 random_ss<-round(runif(Ahn,min=1,max=nrow(AllEnzInfofilt[[1]])))
 random_ss[duplicated(random_ss)]<-random_ss[duplicated(random_ss)]+10
-random_ss<nrow(AllEnzInfofilt$AbaSI)
+
 midpoint<-c(12,8,10)
 minresp<-c(0.04,0.04,0.04)
 maxresp<-c(0.5,0.5,0.5)
@@ -35,7 +39,7 @@ sd=c(8,2,0)
 model=c("Gradual","Moderate","Extreme")
 dir.create("ICBtrials")
 model_df<-data.frame(midpoint,minresp,maxresp,sd=sd,model=model)
-libs<-c("F1","SpeI","KpnI")
+
 ResponsePlot<-list()
 ORplot<-list()
 prop_plot<-list()
@@ -58,6 +62,7 @@ while(m<nrow(model_df)+1){
   xlab("Mutation rate (mutations/Mb)")+ylab("Probability of \nresponse to treatment")+
   theme(axis.text=element_text( size =20), axis.text.x = element_text(hjust = 1,vjust=0.5),axis.title = element_text(size=25))
   ggsave(paste0(folder,"modelplot.png"))
+
 cutofftests<-function(x,df){
   cutoff<-x
   df$WGSpred[df$mutratewgs>cutoff]<-1
@@ -71,31 +76,6 @@ cutofftests<-function(x,df){
   df$actual<-factor(df$actual, levels=c("Non-response","Response"))
   df$WGSpred<-factor(df$WGSpred, levels=0:1)
   df$GBSpred<-factor(df$GBSpred,levels=0:1)
-  # wgstab<-table(actual=df$actual,df$WGSpred)
-  # wgsproptab<-prop.table(wgstab)
-  # #if(ncol(wgstab)>1){
-  # fishwgs<-fisher.test(wgstab)
-  # wgs_pval<-fishwgs$p.value
-  # wgs_OR<-fishwgs$estimate
-  # wgs_OR_lwr<-fishwgs$conf.int[1]
-  # wgs_OR_upr<-fishwgs$conf.int[2]
-  # PPVwgs<-wgstab[2,2]/sum(wgstab[,2])
-  # NPVwgs<-wgstab[1,1]/sum(wgstab[,1])
-  # specificitywgs<-(wgstab[1,1]/sum(wgstab[1,]))
-  # sensitivitywgs<-wgstab[2,2]/sum(wgstab[2,])
-  # df$WGSpred<-as.numeric(df$WGSpred)
-  # if(length(unique(df$actual))>1){
-  #   rocObj_wgs=roc(df$actual,df$WGSpred,ci=T)
-  #   AUC=as.numeric(rocObj_wgs$auc)}else{
-  #     AUC=0.5
-  #   }
-  # WGSdf<-data.frame(TN=wgsproptab[1,1],FN=wgsproptab[2,1],
-  #                   TP=wgsproptab[2,2],FP=wgsproptab[1,2],
-  #                   PPV=PPVwgs, NPV=NPVwgs,
-  #                   Spec=specificitywgs,Sens=sensitivitywgs,
-  #                   AUC=AUC,
-  #                   OR=wgs_OR,pval=wgs_pval,OR_lwr=wgs_OR_lwr, OR_upper=wgs_OR_upr,
-  #                   cutoff = x, Library="WGS")
   gbstab<-table(actual=df$actual,df$GBSpred)
   gbstab<-table(actual=df$actual,df$GBSpred)
   gbsproptab<-prop.table(gbstab)
@@ -161,7 +141,8 @@ LibraryStatsICBtrials<-function(df,midpoint,sd,minresp,maxresp, lib,number_reps,
   }
   sumdf<-bind_rows(sumdf)
   vals<-bind_rows(vals)
-  return(list(sumdf,vals))}
+  return(list(sumdf,vals))
+  }
 
 
 r=1
@@ -190,10 +171,7 @@ prop.table(table(Response=profiles_extreme$simresp,Cohort=profiles_extreme$Cohor
 stats_extreme<-all_stats
 stats_extreme$sig[stats_extreme$pval.adj<0.05]<-"Significant"
 stats_extreme$sig[stats_extreme$pval.adj>0.05]<-"Not Significant"
-which(duplicated(paste0(stats_extreme$trial,"_",stats_extreme$Library,"_",stats_extreme$cutoff,stats_extreme$Cohort)))
-#ggplot(profiles_extreme,aes(mutrategbs, prob_wgs))+geom_point(aes(col=Library),alpha=0.5)+
- # geom_point(data=dfdist,aes(mutratewgs, prob),size=0.5,col="red",alpha=0.01)+ylim(c(0,1))
-
+stats_extreme
 ResponsePlot[[m]]<-ggplot(profiles_extreme,aes(mutratewgs, prob_wgs))+
   geom_point(data=dfdist,aes(mutratewgs, prob),size=0.2,col="black")+ylim(c(0,1))+
   geom_jitter(aes(col=actual),alpha=0.25,width=0.1,size=3)+
@@ -203,7 +181,7 @@ ResponsePlot[[m]]<-ggplot(profiles_extreme,aes(mutratewgs, prob_wgs))+
   guides(col=guide_legend(title="Response"))+
   xlab("Mutation rate (mutations/Mb)")+ylab("Probability of \nresponse to treatment")
 ResponsePlot[[m]]
-ggsave(paste0(folder,"ResponsePlot.png"),width=15,height=5)
+ggsave(paste0(folder,"ResponsePlot.png"),width=15,height=10)
 ggplot(profiles_extreme,aes(prob_gbs, prob_wgs))+geom_point(aes(col=actual),alpha=0.5)+ylim(c(0,1))+xlim(c(0,1))+
   geom_abline(intercept=0,slope=1)
 saveRDS(stats_extreme, paste0(folder,"stats_extreme.RDS"))
@@ -350,6 +328,7 @@ c<-c+1
 }
 
 p<-plot_grid(ORplot[[m]]+theme(legend.position = "none"),prop_plot[[m]])
+p
 ggsave(plot=p,paste0(folder,"SummaryPlot.png"))
 g<-plot_grid(ORplotTrialLibs[[1]]+theme(legend.position = "none"),proptrialLibs[[1]])
 TrialPlot<-ggarrange(ORplot[[m]]+theme(legend.position = "none"),prop_plot[[m]]+theme(legend.position = "none"), 
@@ -357,8 +336,8 @@ TrialPlot<-ggarrange(ORplot[[m]]+theme(legend.position = "none"),prop_plot[[m]]+
 TrialPlotResponse<-ggarrange(ResponsePlot[[m]]+theme(legend.position="none"),TrialPlot,heights=c(1,2),ncol=1)
 TrialPlotResponse
 ggsave(paste0(folder,"TrialSummaryPlot.png"),width=15,height=12)
-ggsave(plot=p,paste0(folder,"CohortSummaryPlot.png"),width=15,height=5)
-ggsave(plot=g,paste0(folder,"LibrarySummaryPlot.png"),width=15,height=5)
+ggsave(plot=p,paste0(folder,"CohortSummaryPlot.png"),width=15,height=10)
+ggsave(plot=g,paste0(folder,"LibrarySummaryPlot.png"),width=15,height=10)
 m<-m+1
 }
 

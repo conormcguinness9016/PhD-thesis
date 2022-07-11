@@ -27,7 +27,7 @@ url<-getURL("https://international.neb.com/tools-and-resources/usage-guidelines/
 
 tables<-readHTMLTable(url, header = T)
 print("scraped table")
-##get just the restriction enzyme chart
+##get just the restriction enzyme chartREl
 RElist<-tables[[2]]
 ##cut out all the other crap in the chart and fix uo html table format
 RElist<-RElist[c(1,3, 5:10)]
@@ -37,6 +37,7 @@ colnames(RElist)<-c("Enzyme", "Sequence", "Activity in Buffer 1.1", "Activity in
 RElist<-RElist[!is.na(RElist[5]),]
 RElist<-RElist[which(RElist$Enzyme!="Enzyme"),]
 print("built df in R")
+write.table(RElist,"initialEnz_no_filter.csv", sep=",")
 ##get image data for the methylation column
 url<-htmlParse(getURL("https://international.neb.com/tools-and-resources/usage-guidelines/nebuffer-performance-chart-with-restriction-enzymes"))
 ##the path was extracted using Selector Gadget-user friendly CSS/XPath finder
@@ -45,98 +46,53 @@ methdata<-xpathSApply(url, path, xmlAttrs)["src",]
 ##methdata only has 281 instances, while RElist has 285 rows, from the website there are 4 enzymes without methylation data- I-CeuI, I-SceI, PI-PspI, PI-SceI, will remove
 RElist<-RElist[which(RElist$Enzyme!="I-CeuI" & RElist$Enzyme!= "I-SceI" &  RElist$Enzyme!="PI-PspI" & RElist$Enzyme!="PI-SceI"),]
 print("excluded methylation enzymes")
-##NEED TO FIX THIS UP TO BE READABLE
 RElist$methdata<-methdata
-##kick out enzymes that are sensitive to CpG methylation
-RElist<-RElist[str_detect(methdata,"not_sensitive"),]
+##kick out enzymes that are sensitive to methylation
+RElist<-RElist[str_detect(methdata,"not-sensitive"),]
 ##let's also cut out enzymes that are only nicking (enzymes containing Nb/Nt at start)
 RElist<-RElist[!str_detect(RElist$Enzyme, "Nb\\."),]
 RElist<-RElist[!str_detect(RElist$Enzyme, "Nt\\."),]
 Enzymes<-RElist$Sequence
 names(Enzymes)<-RElist$Enzyme
-source("Rfunctions/fraglibgenfunction.R")
-
+##get just the enzyme name, remove high fidelity enzymes
+names(Enzymes)<-str_extract(names(Enzymes), "\\w{1,}\\p{Uppercase}")
+Enzymes<-Enzymes[!duplicated(names(Enzymes))]
+####tst with just 10 enzymes
+#Enzymes<-Enzymes[1:10]
+source("fraglibgenfunction.R")
 enzdat<-enzyme_info_gen(Enzymes, enzymedata = TRUE)
-enz<-str_extract(enzdat$Library, "\\w{1,}\\p{Uppercase}")
-enzdat<-enzdat[!duplicated(enz),]
 
+#saveRDS(enzdat, "enzdat.RDS")
+enzdat<-readRDS("enzdat.RDS")
+write.table(enzdat,"enzdat.csv", sep = ",")
+read.csv("enzdat.csv")
 
 frags<-frag_lib_generation(enzdat,Hsapiens, chroms=c(1:24))
 #saveRDS(frags, "frags.RDS")
+frags<-readRDS("frags.RDS")
+
+frags<-frag_lib_generation(enzdat,Hsapiens, chroms=c(1:24))
+saveRDS(frags, "frags.RDS")
+
 REfraglibs<-lapply(frags$REfraglibs, function(x){
   x$chr <- replace(x[,chr], which(x[,chr] == "chr24"), "chrY")
   x$chr <- replace(x[,chr], which(x[,chr] == "chr23"), "chrX")
   return(x)
 })
+rm(frags)
+
 REfraglibs<-lapply(REfraglibs, function(x){
   x[chr %in% names(Hsapiens)[1:24],]
 })
 REfraglibs<-REfraglibs[lapply(REfraglibs, function(x){nrow(x)}) >0]
+<<<<<<< HEAD
+length(REfraglibs)
 #saveRDS(REfraglibs, "REfraglibs.RDS")
+=======
+saveRDS(REfraglibs, "REfraglibs.RDS")
+>>>>>>> ca06e9d26f4fd3802b1d05a3372e303e6c97de77
 
 
-mutinfofrags<-function(x, mutrate=FALSE, libs = NULL ){
-  RE.gr=makeGRangesFromDataFrame(data.frame(x), keep.extra.columns = TRUE)
-  overlap.gr<-subsetByOverlaps(BRCAgenoms.gr, RE.gr)
-  overlap_vr = VRanges(
-    seqnames = seqnames(overlap.gr),
-    ranges = ranges(overlap.gr),
-    ref = overlap.gr$Ref,
-    alt = overlap.gr$Alt,
-    sampleNames = overlap.gr$Sample,
-    study = names(data.frame(x)[3]))
-  overlap_motifs<-mutationContext(overlap_vr, BSgenome.Hsapiens.UCSC.hg19)
-  btab<-as.data.table(BRCA_motifs)
-  btab$Context<-"Other"
-  btab$Context[btab$context =="T.A" & btab$alteration=="CT"]<-"APOBEC"
-  btab$Context[btab$context =="T.T" & btab$alteration=="CT"]<-"APOBEC"
-  btab$Context[btab$context =="T.A" & btab$alteration=="CG"]<-"APOBEC"
-  btab$Context[btab$context =="T.T" & btab$alteration=="CG"]<-"APOBEC"
-  dfprops<-data.frame(prop.table(table(btab$Context, btab$sampleNames),2))
-  dfprops<-subset(dfprops, Var1 == "APOBEC")
-  dfprops$APOBECHyper[dfprops$Freq>0.4]<-"APOBEC_hyper"
-  dfprops$APOBECHyper[dfprops$Freq<0.4]<-"APOBEC_typical"
-  dfprops$APOBECHyper<-fct_relevel(dfprops$APOBECHyper,c("APOBEC_typical", "APOBEC_hyper"))
-  
-  overlap_mm = motifMatrix(overlap_motifs, group = "sampleNames", normalize = TRUE)
-  overlapmatrix = motifMatrix(overlap_motifs, group = "sampleNames", normalize = FALSE)
-  nmutswgs<-colSums(BRCAmatrix)
-  df<-data.table(Sample = names(nmutswgs))
-  df$nmutswgs<-nmutswgs
-  l<-length(nmutswgs)
-  om<-matrix(rep(0, nrow(overlap_mm)*length(nmutswgs)),  nrow=nrow(overlap_mm), ncol=length(nmutswgs))
-  om<-data.table(om)
-  overlap_mm<-data.table(overlap_mm)
-  om[,which(names(nmutswgs) %in% colnames(overlap_mm))]<-overlap_mm
-  overlap_mm<-om
-  om<-matrix(rep(0, nrow(overlapmatrix)*length(nmutswgs)),  nrow=nrow(overlapmatrix), ncol=length(nmutswgs))
-  om<-data.table(om)
-  overlapmatrix<-data.table(overlapmatrix)
-  om[,which(names(nmutswgs) %in% colnames(overlapmatrix))]<-overlapmatrix
-  overlapmatrix<-om
-  cosmat<-cos_sim_matrix(overlap_mm,BRCA_mm)
-  df$cosimdiag<-c(diag(cosmat))
-  df$cosimdiag[is.nan(df$cosimdiag)]<-0
-  df$nmutsgbs<-colSums(overlapmatrix)
-  if( typeof(x) == "list" && ncol(x)> 4){
-    df$Library<-rep(as.character(x[1,5]), nrow(df))
-  } else if( !is.null(libs) ) {
-    df$Library<-rep(libs, nrow(df))
-  } else {
-    print("Warning: no library names provided")
-  }
-  if(mutrate == TRUE){
-    gbscov<-sum(width(GenomicRanges::reduce(RE.gr)))
-    wgscov<-sum(seqlengths(Hsapiens)[1:24])
-    df$mutrategbs<-(df$nmutsgbs*10^6)/gbscov
-    df$mutratewgs<-(nmutswgs*10^6)/wgscov
-
-  } else{
-    
-    print("Mutation rate not computed")
-    df
-  }
-}
 
 mutinfofragsnew<-function(x, mutrate=FALSE, libs = NULL ){
   RE.gr=makeGRangesFromDataFrame(data.frame(x), keep.extra.columns = TRUE)
@@ -188,7 +144,6 @@ mutinfofragsnew<-function(x, mutrate=FALSE, libs = NULL ){
     df$ptnamegbs<-dfprops$Var2
     df
   } else{
-    
     print("Mutation rate not computed")
     df
   }
@@ -198,7 +153,6 @@ mutinfofragsnew<-function(x, mutrate=FALSE, libs = NULL ){
 
 
 
-REfraglibs<-REfraglibs[lapply(REfraglibs, function(x){nrow(x)}) >0]
 BRCA_motifs<-readRDS("BRCA_motifs.RDS")
 btab<-as.data.table(BRCA_motifs)
 
@@ -233,7 +187,7 @@ AllEnzInfo<-mclapply(REfraglibs, function(x){
 
 
 library(GenomicFeatures)
-f1<-scan("FoundationOneGenes", what = "", sep = " ")
+f1<-scan("FoundationOneGenes.txt", what = "", sep = " ")
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 exons<-exonsBy(TxDb.Hsapiens.UCSC.hg19.knownGene, "gene")
 library(biomaRt)
@@ -248,7 +202,13 @@ f1ranges<-exons[which(names(exons) %in% geneinfo$entrezgene_id)]
 F1Info<-mutinfofragsnew(f1ranges, mutrate=TRUE, libs = "F1")
 AllEnzInfo<-c(AllEnzInfo,list(F1Info))
 names(AllEnzInfo)<-unlist(lapply(AllEnzInfo, function(x){x[1,5]}))
-AllEnzInfo
+<<<<<<< HEAD
+=======
 
-saveRDS(AllEnzInfo, "AllEnzInfo.RDS")
+>>>>>>> ca06e9d26f4fd3802b1d05a3372e303e6c97de77
+
+
+#saveRDS(AllEnzInfo, "AllEnzInfo.RDS")
+
+
 

@@ -12,7 +12,6 @@ library(bedr)
 library(GenomicRanges)
 library(data.table)
 library(cowplot)
-library(emdbook)
 library(data.table)
 library(parallel)
 library(ggsignif)
@@ -68,7 +67,6 @@ btab$Context[btab$context =="T.A" & btab$alteration=="CG"]<-"APOBEC"
 btab$Context[btab$context =="T.T" & btab$alteration=="CG"]<-"APOBEC"
 BRCA_mm = motifMatrix(BRCA_motifs, group = "sampleNames", normalize = TRUE)
 BRCAmatrix = motifMatrix(BRCA_motifs, group = "sampleNames", normalize = FALSE)
-BRCAmatrix
 wgscov<-sum(seqlengths(Hsapiens)[1:24])
 nmutswgs<-colSums(BRCAmatrix)
 
@@ -85,6 +83,7 @@ dfprops$APOBECHyper<-fct_relevel(dfprops$APOBECHyper,c("APOBEC_typical", "APOBEC
 dfprops$TMB<-as.factor(dfprops$TMB)
 dfprops$TMB<-fct_relevel(dfprops$TMB, c("Low (<5muts/Mb)", "Medium (5-10muts/Mb)", "High (>10muts/Mb)"))
 saveRDS(dfprops, "dfprops.RDS")
+dfprops<-readRDS("dfprops.RDS")
 fish<-fisher.test(table(dfprops$TMB, dfprops$APOBECHyper))
 
 dir.create("figs")
