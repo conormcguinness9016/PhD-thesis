@@ -12,7 +12,7 @@ lf<-list.files(pattern = "ALBEX1_SRR134434*")
 # lapply(lf,function(x){
 #   lfs<-paste0(x, "/outs/filtered_feature_bc_matrix.h5")
 #   h<-Read10X_h5(lfs)
-#   counts<-CreateSeuratObject(h)
+#   counts<-CreateSeuratOf fbject(h)
 #   counts[["percent.mt"]] <- PercentageFeatureSet(counts, pattern = "^MT")
 #   figdir<-paste0(x,"/figs")
 #   figQC<-paste0(figdir, "QC")
