@@ -115,8 +115,8 @@ png("figs/QC/PCAPlot.png", width = 1500)
 d<-DimPlot(counts, reduction = "pca")
 d&NoLegend()&
   theme(axis.text=element_text(size=20),title=element_text(size=30))&
-  xlab("Principle Component 1")&
-  ylab("Principle Component 2")&
+  xlab("Principal Component 1")&
+  ylab("Principal Component 2")&
   labs(title="")
 dev.off()
 
@@ -233,8 +233,8 @@ png("epifigs/QC/PCAPlot.png", width = 1500)
 d<-DimPlot(epicounts, reduction = "pca")
 d&NoLegend()&
   theme(axis.text=element_text(size=20),title=element_text(size=30))&
-  xlab("Principle Component 1")&
-  ylab("Principle Component 2")&
+  xlab("Principal Component 1")&
+  ylab("Principal Component 2")&
   labs(title="")
 dev.off()
 
@@ -446,8 +446,8 @@ write.table(cl.0.m_neg, "ALBEXERSNEG.txt", sep ="\t")
 # d<-DimPlot(lumprogcounts, reduction = "pca")
 # d&NoLegend()&
 #   theme(axis.text=element_text(size=20),title=element_text(size=30))&
-#   xlab("Principle Component 1")&
-#   ylab("Principle Component 2")&
+#   xlab("Principal Component 1")&
+#   ylab("Principal Component 2")&
 #   labs(title="")
 # dev.off()
 #
