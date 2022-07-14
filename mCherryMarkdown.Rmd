@@ -1,0 +1,753 @@
+---
+title: "Sour Apples analysis"
+author: "Conor McGuinness"
+date: "30/06/2022"
+
+
+output: 
+  word_document:
+    reference_docx: Markdown.docx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pander)
+library(car)
+library(stringr)
+```
+
+## Data import
+
+
+
+```{r Live_cell_import, echo =FALSE}
+samps<-c( "Reporter Only","A3A","A3Am","A3B","A3Bm")
+sampsEnzymes<-samps[2:5]
+##import processed FACS data
+rep1LiveCellFreqs<-readRDS("120421_Dunbier sourapples/LivecellfreqsmChez.RDS")
+rep2LiveCellFreqs<-readRDS("230421_Dunbier sourapples/LivecellfreqsmChez.RDS")
+rep3LiveCellFreqs<-readRDS("010521_Dunbier sourapples/LivecellfreqsmChez.RDS")
+
+##nonmutant column is whitespace for 3rd rep, fix up
+##Also add "Enzyme" column for this rep
+rep3LiveCellFreqs$mutant[rep3LiveCellFreqs$mutant=="NA"]<-""
+rep3LiveCellFreqs$Enzyme<-paste0(rep3LiveCellFreqs$enzyme,rep3LiveCellFreqs$mutant)
+
+
+
+
+##Median normalise reps
+rep1LiveCellFreqs$freqnorm<-rep1LiveCellFreqs$Frequency/median(rep1LiveCellFreqs$Frequency)
+rep2LiveCellFreqs$freqnorm<-rep2LiveCellFreqs$Frequency/median(rep2LiveCellFreqs$Frequency)
+rep3LiveCellFreqs$freqnorm<-rep3LiveCellFreqs$Frequency/median(rep3LiveCellFreqs$Frequency)
+##Assign experiment numbers
+rep1LiveCellFreqs$Experiment<-"1"
+rep2LiveCellFreqs$Experiment<-"2"
+rep3LiveCellFreqs$Experiment<-"3"
+##Make sure all column names match up before binding rows
+rep2LiveCellFreqs<-rep2LiveCellFreqs[match(colnames(rep1LiveCellFreqs), colnames(rep2LiveCellFreqs))]
+rep1LiveCellFreqs<-rep1LiveCellFreqs[match(colnames(rep2LiveCellFreqs), colnames(rep1LiveCellFreqs))]
+rep3LiveCellFreqs<-rep3LiveCellFreqs[match(colnames(rep1LiveCellFreqs), colnames(rep3LiveCellFreqs))]
+LiveCellFreqs<-rbind(rep1LiveCellFreqs, rep2LiveCellFreqs,rep3LiveCellFreqs)
+##replace "mCherry" with "Reporter only" for plotting
+LiveCellFreqs$Enzyme[LiveCellFreqs$Enzyme=="mCherry"]<-"Reporter Only"
+##define samples to be plotted
+samps<-c( "Reporter Only","A3A","A3Am","A3B","A3Bm")
+sampsEnzymes<-samps[2:5]
+LiveCellFreqs_combined<-subset(data.frame(LiveCellFreqs),Enzyme %in% samps)
+LiveCellFreqs_combined$UGI[LiveCellFreqs_combined$UGI=="NA"]<-"-"
+LiveCellFreqs_combined_ss<-subset(LiveCellFreqs_combined,Enzyme %in% sampsEnzymes)
+lcfm<-subset(data.frame(LiveCellFreqs),Enzyme %in% samps)
+lcfm$UGI[lcfm$UGI=="NA"]<-"-"
+lcfm_ss<-subset(LiveCellFreqs,Enzyme %in% sampsEnzymes)
+
+library(tidyverse)
+rep1GFPfreqsmCherry<-readRDS("120421_Dunbier sourapples/GFPfreqsmChez.RDS")
+rep2GFPfreqsmCherry<-readRDS("230421_Dunbier sourapples/GFPfreqsmChez.RDS")
+rep3GFPfreqsmCherry<-readRDS("010521_Dunbier sourapples/GFPfreqsmChez.RDS")
+
+rep3GFPfreqsmCherry$mutant[rep3GFPfreqsmCherry$mutant=="NA"]<-""
+rep3GFPfreqsmCherry$Enzyme<-paste0(rep3GFPfreqsmCherry$enzyme,rep3GFPfreqsmCherry$mutant)
+rep1GFPfreqsmCherry$Enzyme[rep1GFPfreqsmCherry$Enzyme=="mCherry"]<-"Reporter Only"
+rep2GFPfreqsmCherry$Enzyme[rep2GFPfreqsmCherry$Enzyme=="mCherry"]<-"Reporter Only"
+rep3GFPfreqsmCherry$Enzyme[rep3GFPfreqsmCherry$Enzyme=="mCherry"]<-"Reporter Only"
+rep1GFPfreqsmCherry<-subset(rep1GFPfreqsmCherry,Enzyme %in% samps)
+rep2GFPfreqsmCherry<-subset(rep2GFPfreqsmCherry,Enzyme %in% samps)
+rep3GFPfreqsmCherry<-subset(rep3GFPfreqsmCherry,Enzyme %in% samps)
+
+rep1GFPfreqsmCherry$freqnorm<-rep1GFPfreqsmCherry$Frequency/median(rep1GFPfreqsmCherry$Frequency)
+rep2GFPfreqsmCherry$freqnorm<-rep2GFPfreqsmCherry$Frequency/median(rep2GFPfreqsmCherry$Frequency)
+rep3GFPfreqsmCherry$freqnorm<-rep3GFPfreqsmCherry$Frequency/median(rep3GFPfreqsmCherry$Frequency)
+rep1GFPfreqsmCherry$Experiment<-"1"
+rep2GFPfreqsmCherry$Experiment<-"2"
+rep3GFPfreqsmCherry$Experiment<-"3"
+rep2GFPfreqsmCherry<-rep2GFPfreqsmCherry[na.omit(match(colnames(rep1GFPfreqsmCherry), colnames(rep2GFPfreqsmCherry)))]
+rep1GFPfreqsmCherry<-rep1GFPfreqsmCherry[match(colnames(rep2GFPfreqsmCherry), colnames(rep1GFPfreqsmCherry))]
+rep3GFPfreqsmCherry<-rep3GFPfreqsmCherry[match(colnames(rep1GFPfreqsmCherry), colnames(rep3GFPfreqsmCherry))]
+rep1Cherry<-subset(rep1GFPfreqsmCherry, Population=="mCherry+")
+rep1CherryGFP<-subset(rep1GFPfreqsmCherry, Population=="mCherry+GFP+")
+rep2Cherry<-subset(rep2GFPfreqsmCherry, Population=="mCherry+")
+rep2CherryGFP<-subset(rep2GFPfreqsmCherry, Population=="mCherry+GFP+")
+rep3Cherry<-subset(rep3GFPfreqsmCherry, Population=="mCherry+")
+rep3CherryGFP<-subset(rep3GFPfreqsmCherry, Population=="mCherry+GFP+")
+rep1Cherry$mednorm<-rep1Cherry$Frequency/median(rep1Cherry$Frequency)
+rep2Cherry$mednorm<-rep2Cherry$Frequency/median(rep2Cherry$Frequency)
+rep3Cherry$mednorm<-rep3Cherry$Frequency/median(rep3Cherry$Frequency)
+rep1CherryGFP$mednorm<-rep1CherryGFP$Frequency/median(rep1CherryGFP$Frequency)
+rep2CherryGFP$mednorm<-rep2CherryGFP$Frequency/median(rep2CherryGFP$Frequency)
+rep3CherryGFP$mednorm<-rep3CherryGFP$Frequency/median(rep3CherryGFP$Frequency)
+rep1CherryGFP$FreqCherry<-rep1CherryGFP$Frequency*100/rep1Cherry$Frequency
+rep2CherryGFP$FreqCherry<-rep2CherryGFP$Frequency*100/rep2Cherry$Frequency
+rep3CherryGFP$FreqCherry<-rep3CherryGFP$Frequency*100/rep3Cherry$Frequency
+rep1CherryGFP$FreqCherrynorm<-rep1CherryGFP$FreqCherry/median(rep1CherryGFP$FreqCherry)
+rep2CherryGFP$FreqCherrynorm<-rep2CherryGFP$FreqCherry/median(rep2CherryGFP$FreqCherry)
+rep3CherryGFP$FreqCherrynorm<-rep3CherryGFP$FreqCherry/median(rep3CherryGFP$FreqCherry)
+GFPfreqsmCherry<-rbind(rep1CherryGFP, rep2CherryGFP,rep3CherryGFP)
+GFPfreqsmCherry$Enzyme[GFPfreqsmCherry$Enzyme=="mCherry"]<-"Reporter Only"
+GFPfreqsmCherry$UGI[GFPfreqsmCherry$UGI=="NA"]<-"-"
+mCherryfreqs<-rbind(rep1Cherry, rep2Cherry,rep3Cherry)
+mCherryfreqs$Enzyme[mCherryfreqs$Sample %in% c("Rep","Reporter only")]<-"Reporter Only"
+mCherryfreqs$Enzyme[mCherryfreqs$Enzyme=="mCherry"]<-"Reporter Only"
+mCherryfreqs$UGI[mCherryfreqs$UGI=="NA"]<-"-"
+
+gfmc<-subset(GFPfreqsmCherry, Enzyme %in% samps)
+gfmc_ss<-subset(GFPfreqsmCherry, Enzyme %in% sampsEnzymes)
+mcf<-subset(mCherryfreqs, Enzyme %in% samps )
+mcf_ss<-subset(mcf, Enzyme %in% sampsEnzymes)
+
+mcf$Enzyme<-factor(mcf$Enzyme, samps)
+```
+
+
+
+
+
+```{r, echo=FALSE}
+LiveCellANOVA_exp_prenorm<-aov(Frequency~as.factor(Experiment),LiveCellFreqs_combined_ss)
+LiveCellANOVA_exp_postnorm<-aov(freqnorm~as.factor(Experiment),LiveCellFreqs_combined_ss)
+mCherryANOVA_exp_prenorm<-aov(Frequency~as.factor(Experiment),mcf_ss)
+mCherryANOVA_exp_postnorm<-aov(mednorm~as.factor(Experiment),mcf_ss)
+mCherryGFPANOVAlc_exp_prenorm<-aov(Frequency~as.factor(Experiment),gfmc_ss)
+mCherryGFPANOVAlc_exp_postnorm<-aov(mednorm~as.factor(Experiment),gfmc_ss)
+mCherryGFPANOVAmc_exp_prenorm<-aov(FreqCherry~as.factor(Experiment),gfmc_ss)
+mCherryGFPANOVAmc_exp_postnorm<-aov(FreqCherrynorm~as.factor(Experiment),gfmc_ss)
+
+
+tests<-c("Frequency of live cells by experiment",
+         "Median normalised frequency of live cells by experiment",
+         "Frequency of mCherry+ cells by experiment",
+         "Median normalised frequency of mCherry+ cells by experiment",
+         "Frequency of mCherry+GFP+ cells out of live cell population by experiment",
+         "Median normalised frequency of mCherry+GFP+ cells out of live cell population by experiment",
+         "Frequency of mCherry+GFP+ cells out of mCherry+ cell population by experiment",
+         "Median normalised frequency of mCherry+GFP+ cells out of mCherry+ cell population by experiment")
+testslabs<-c("Frequency of live cells by experiment",
+         "Median normalised frequency of live cells by experiment",
+         "Frequency of mCherry+ cells by experiment",
+         "Median normalised frequency of \nmCherry+ cells by experiment",
+         "Frequency of mCherry+GFP+ cells out \nof live cell population by experiment",
+         "Median normalised frequency of mCherry+GFP+ \ncells out of live cell population by experiment",
+         "Frequency of mCherry+GFP+ cells out of \nmCherry+ cell population by experiment",
+         "Median normalised frequency of mCherry+GFP+ \ncells out of mCherry+ cell population by experiment")
+labs<-paste("Residuals of Model:\n", testslabs)
+
+hist(residuals(LiveCellANOVA_exp_prenorm), 2,main = "",xlab="")
+title(xlab=labs[1], line = 4)
+hist(residuals(LiveCellANOVA_exp_postnorm), main = "", xlab="")
+title(xlab=labs[2], line = 4)
+hist(residuals(mCherryANOVA_exp_prenorm),main = "",xlab="")
+title(xlab=labs[3], line = 4)
+hist(residuals(mCherryANOVA_exp_postnorm),main = "",xlab="")
+title(xlab=labs[4], line = 4)
+hist(residuals(mCherryGFPANOVAlc_exp_prenorm),main = "",xlab="")
+title(xlab=labs[5], line = 4)
+hist(residuals(mCherryGFPANOVAlc_exp_postnorm),main = "",xlab="")
+title(xlab=labs[6], line = 4)
+hist(residuals(mCherryGFPANOVAmc_exp_prenorm),main = "",xlab="")
+title(xlab=labs[7], line = 4)
+hist(residuals(mCherryGFPANOVAmc_exp_postnorm),main = "",xlab="")
+title(xlab=labs[8], line = 4)
+```
+
+
+```{r, echo=FALSE}
+ST_exp<-list()
+ST_exp[[1]]<-shapiro.test(residuals(LiveCellANOVA_exp_prenorm))
+ST_exp[[2]]<-shapiro.test(residuals(LiveCellANOVA_exp_postnorm))
+ST_exp[[3]]<-shapiro.test(residuals(mCherryANOVA_exp_prenorm))
+ST_exp[[4]]<-shapiro.test(residuals(mCherryANOVA_exp_postnorm))
+ST_exp[[5]]<-shapiro.test(residuals(mCherryGFPANOVAlc_exp_prenorm))
+ST_exp[[6]]<-shapiro.test(residuals(mCherryGFPANOVAlc_exp_postnorm))
+ST_exp[[7]]<-shapiro.test(residuals(mCherryGFPANOVAmc_exp_prenorm))
+ST_exp[[8]]<-shapiro.test(residuals(mCherryGFPANOVAmc_exp_postnorm))
+ST_expdf<-bind_rows(lapply(ST_exp, function(x){
+  dat<-str_extract(x$data.name, "(?<=\\().{0,}(?=\\))")
+  data.frame(mod=dat,W=x$statistic, p.value=x$p.value)
+}))
+
+rownames(ST_expdf)<-NULL
+ST_expdf$Model<-tests
+ST_expdf$p.adj<-p.adjust(ST_expdf$p.value, method="bonferroni")
+ST_expdf$`Test to use`<-"Kruskal-Wallis"
+ST_expdf$`Test to use`[ST_expdf$p.adj>0.05]<-"ANOVA"
+ST_expdf<-ST_expdf[,c(4,2,3,5,6,1)]
+```
+
+
+```{r, echo=FALSE}
+pander(ST_expdf[,-6])
+par<-ST_expdf$mod[ST_expdf$p.adj>0.05]
+par_df<-bind_rows(lapply(seq(par),function(x){
+  mod<-par[x]
+ anova_res<-summary(eval(parse(text=mod)))
+ anova_res[[1]][1,]
+data.frame(anova_res[[1]][1,],mod)
+}))
+par_df$p.adj<-p.adjust(par_df$Pr..F., method="bonferroni")
+par_df$Model<-ST_expdf$Model[match(par_df$mod, ST_expdf$mod)]
+rownames(par_df)<-NULL
+par_df$Significance<-"NS"
+par_df$Significance[par_df$p.adj<0.05]<-"*"
+par_df<-par_df[c(8,1,2,3,4,5,7,9,6)]
+```
+
+
+```{r}
+pander(par_df[-9])
+```
+
+
+```{r,echo=FALSE}
+nonpar<-ST_expdf$mod[ST_expdf$p.adj<0.05]
+krusktests<-ST_expdf$Model[match(nonpar, ST_expdf$mod)]
+onewaykrusk<-list()
+onewaykrusk[[1]]<-kruskal.test(Frequency~as.factor(Experiment),LiveCellFreqs_combined_ss)
+onewaykrusk[[2]]<-kruskal.test(freqnorm~as.factor(Experiment),LiveCellFreqs_combined_ss)
+onewaykrusk[[3]]<-kruskal.test(Frequency~as.factor(Experiment),gfmc_ss)
+onewaykrusk[[4]]<-kruskal.test(mednorm~as.factor(Experiment),gfmc_ss)
+onewaykrusk[[5]]<-kruskal.test(FreqCherrynorm~as.factor(Experiment),gfmc_ss)
+onewaykruskdf<-bind_rows(lapply(seq(onewaykrusk),function(x){
+  krusk<-onewaykrusk[[x]]
+  data.frame(Model=krusktests[x],statistic=krusk$statistic, parameter= krusk$parameter, pval=krusk$p.value)
+}))
+rownames(onewaykruskdf)<-NULL
+onewaykruskdf$p.adj<-p.adjust(onewaykruskdf$pval, method ="bonferroni")
+onewaykruskdf$Significance<-"NS"
+onewaykruskdf$Significance[onewaykruskdf$p.adj<0.05]<-"*"
+```
+
+
+```{r}
+pander(onewaykruskdf)
+```
+
+
+```{r,echo=FALSE}
+ggplot(LiveCellFreqs_combined_ss, aes(Experiment, Frequency))+ 
+  geom_jitter(size=5)+
+  geom_boxplot(alpha=0.5, outlier.shape=NA)+
+    ylab("% Live cells (out of \nsingle cell population)")+
+    theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+    legend.text = element_text(size=15),legend.title = element_text(size=20),
+    axis.text.x = element_text(angle=45,hjust=1))
+ggplot(LiveCellFreqs_combined_ss, aes(Experiment,freqnorm))+ 
+  geom_jitter(size=5)+
+  geom_boxplot(alpha=0.5, outlier.shape=NA)+
+    ylab("% Live cells (out of \nsingle cell population)")+
+    theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+    legend.text = element_text(size=15),legend.title = element_text(size=20),
+    axis.text.x = element_text(angle=45,hjust=1))
+ggplot(mcf_ss, aes(Experiment, Frequency))+ 
+  geom_jitter(size=5)+
+  geom_boxplot(alpha=0.5, outlier.shape=NA)+
+    ylab("% mCherry+ cells (out of \nLive Cell Population)")+
+    theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+    legend.text = element_text(size=15),legend.title = element_text(size=20),
+    axis.text.x = element_text(angle=45,hjust=1))
+ggplot(mcf_ss, aes(Experiment, mednorm))+ 
+  geom_jitter(size=5)+
+  geom_boxplot(alpha=0.5, outlier.shape=NA)+
+    ylab("Median normalised \n % mCherry+ cells (out of \nLive Cell Population)")+
+    theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+    legend.text = element_text(size=15),legend.title = element_text(size=20),
+    axis.text.x = element_text(angle=45,hjust=1))
+ggplot(gfmc_ss, aes(Experiment, Frequency))+ 
+  geom_jitter(size=5)+
+  geom_boxplot(alpha=0.5, outlier.shape=NA)+
+    ylab("% mCherry+ GFP+ \ncells (out of \nLive Cell Population)")+
+    theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+    legend.text = element_text(size=15),legend.title = element_text(size=20),
+    axis.text.x = element_text(angle=45,hjust=1))
+ggplot(gfmc_ss, aes(Experiment, mednorm))+ 
+  geom_jitter(size=5)+
+  geom_boxplot(alpha=0.5, outlier.shape=NA)+
+    ylab("Median normalised \n %mCherry+GFP+ cells\n (out of Live Cell Population)")+
+    theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+    legend.text = element_text(size=15),legend.title = element_text(size=20),
+    axis.text.x = element_text(angle=45,hjust=1))
+ggplot(gfmc_ss, aes(Experiment, FreqCherry))+ 
+  geom_jitter(size=5)+
+  geom_boxplot(alpha=0.5, outlier.shape=NA)+
+    ylab("% mCherry+ GFP+ \ncells (out of \nmCherry Cell Population)")+
+    theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+    legend.text = element_text(size=15),legend.title = element_text(size=20),
+    axis.text.x = element_text(angle=45,hjust=1))
+ggplot(gfmc_ss, aes(Experiment, FreqCherrynorm))+ 
+  geom_jitter(size=5)+
+  geom_boxplot(alpha=0.5, outlier.shape=NA)+
+    ylab("Median normalised\n % mCherry+ GFP+ cells (out of \nmCherry Cell Population)")+
+    theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+    legend.text = element_text(size=15),legend.title = element_text(size=20),
+    axis.text.x = element_text(angle=45,hjust=1))
+```
+
+
+```{r,echo=FALSE}
+LiveCellANOVA<-aov(freqnorm~Enzyme*UGI,LiveCellFreqs_combined_ss)
+mCherryANOVA<-aov(mednorm~Enzyme*UGI,mcf_ss)
+mCherryGFPANOVAlc<-aov(mednorm~Enzyme*UGI,gfmc_ss)
+mCherryGFPANOVAmc<-aov(FreqCherrynorm~Enzyme*UGI,gfmc_ss)
+models<-c("Median normalised live cell frequency by UGI*Enzyme transfection",
+          "Median normalised mCherry+ cell frequency by UGI*Enzyme transfection",
+          "Median normalised mCherry+GFP+ cell frequency out of live cell frequency by UGI*Enzyme transfection",
+          "Median normalised mCherry+GFP+ cell frequency out of mCherry+ cell frequency by UGI*Enzyme transfection")
+modelslabs<-c("Median normalised live cell \nfrequency by UGI*Enzyme transfection",
+          "Median normalised mCherry+ cell \nfrequency by UGI*Enzyme transfection",
+          "Median normalised mCherry+GFP+ cell \nfrequency out of live cell frequency by UGI*Enzyme transfection",
+          "Median normalised mCherry+GFP+ cell \nfrequency out of mCherry+ cell frequency by UGI*Enzyme transfection")
+labs<-paste("Residuals of Model:\n", modelslabs)
+
+hist(residuals(LiveCellANOVA),xlab="", main="")
+title(xlab=labs[1],line=4)
+hist(residuals(mCherryANOVA),xlab="", main="")
+title(xlab=labs[2],line=4)
+hist(residuals(mCherryGFPANOVAlc),xlab="", main="")
+title(xlab=labs[3],line=4)
+hist(residuals(mCherryGFPANOVAmc),xlab="", main="")
+title(xlab=labs[4],line=4)
+ST<-list()
+ST[[1]]<-shapiro.test(residuals(LiveCellANOVA))
+ST[[2]]<-shapiro.test(residuals(mCherryANOVA))
+ST[[3]]<-shapiro.test(residuals(mCherryGFPANOVAlc))
+ST[[4]]<-shapiro.test(residuals(mCherryGFPANOVAmc))
+
+ST_df<-bind_rows(lapply(ST, function(x){
+  dat<-str_extract(x$data.name, "(?<=\\().{0,}(?=\\))")
+  data.frame(mod=dat,W=x$statistic, p.value=x$p.value)
+}))
+ST_df$p.adj<-p.adjust(ST_df$p.value, method ="bonferroni")
+ST_df$Model<-models
+rownames(ST_df)<-NULL
+ST_df$`Test to use`<-"Kruskal-Wallis"
+ST_df$`Test to use`[ST_df$p.adj>0.05]<-"ANOVA"
+```
+
+
+```{r}
+pander(ST_df[c(5,2,3,4,6)])
+```
+
+
+```{r,echo=FALSE}
+par<-ST_df$mod[ST_df$`Test to use`=="ANOVA"]
+
+
+
+par_df<-bind_rows(lapply(seq(par),function(x){
+  mod<-par[x]
+ anova_res<-summary(eval(parse(text=mod)))
+
+data.frame(anova_res[[1]][c(1,2,3),],mod)
+}))
+par_df$p.adj<-p.adjust(par_df$Pr..F., method="bonferroni")
+par_df$Model<-ST_df$Model[match(par_df$mod, ST_df$mod)]
+str_trim(rownames(par_df))
+par_df$Factor<-str_trim(str_extract(rownames(par_df),"^.{0,}(?=[:space:]{1,1})"))
+par_df$Significance<-"NS"
+par_df$Significance[par_df$p.adj<0.05]<-"*"
+rownames(par_df)<-NULL
+par_df
+pander(par_df[c(8,9,1,2,3,4,5,7)])
+
+pander(TukeyHSD(eval(parse(text=par[1]))))
+# kruskal.test(mednorm~as.factor(Experiment),mcf_ss)
+# 
+# hist(residuals(mCherryANOVA_exp))
+# boxplot(residuals(mCherryANOVA_exp))
+# shapiro.test(residuals(mCherryANOVA_exp))
+# pander(kruskal.test(Frequency~as.factor(Experiment),mcf_ss))
+# 
+# pander(summary(mCherryANOVA_exp))
+# pander(TukeyHSD(mCherryANOVA_exp))
+```
+
+```{r,echo=FALSE}
+nonpar<-ST_df$mod[ST_df$`Test to use`=="Kruskal-Wallis"]
+nonparmods<-ST_df$Model[match(nonpar, ST_df$mod)]
+LiveCellWilcox_UGI<-wilcox.test(freqnorm~UGI,LiveCellFreqs_combined_ss)
+
+LiveCellEnzymeKruskal<-kruskal.test(freqnorm~Enzyme,LiveCellFreqs_combined_ss)
+
+
+mCherryGFPWilcox_UGI<-wilcox.test(FreqCherrynorm~UGI,gfmc_ss)
+mCherryGFPEnzymeKruskal<-kruskal.test(FreqCherrynorm~Enzyme,gfmc_ss)
+wilcoxdf<-data.frame(Model=nonparmods,
+           W=c(LiveCellWilcox_UGI$statistic,mCherryGFPWilcox_UGI$statistic),
+           `p-value`=c(LiveCellWilcox_UGI$p.value,mCherryGFPWilcox_UGI$p.value))
+wilcoxdf$p.adj<-p.adjust(wilcoxdf$p.value, method ="bonferroni")
+           
+kruskaldf<-data.frame(Model=nonparmods,
+                      df=c(LiveCellEnzymeKruskal$parameter,mCherryGFPEnzymeKruskal$parameter),
+                      `Kruskal-Wallis chi-squared`=c(LiveCellEnzymeKruskal$statistic,mCherryGFPEnzymeKruskal$statistic),
+                      `p-value`=c(LiveCellEnzymeKruskal$p.value,mCherryGFPEnzymeKruskal$p.value))
+kruskaldf$p.adj<-p.adjust(kruskaldf$p.value, method = "bonferroni")
+pander(wilcoxdf)
+pander(kruskaldf)
+
+ggplot(lcfm, aes(UGI, colour = UGI, freqnorm)) + geom_boxplot(outlier.shape = NA)+
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+ 
+  ylab("Normalised % Live cells \n(out of single \ncell population)")+
+  theme(axis.text = element_text(size=20), axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(hjust=1))
+ggplot(gfmc, aes(UGI, colour = UGI, FreqCherrynorm)) + geom_boxplot(outlier.shape = NA)+
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+  ylab(" Normalised % \nmCherry+ GFP+ cells \n(out of mCherry+ cells)")+
+  theme(axis.text = element_text(size=20),axis.title = element_text(size=20),
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(hjust=1))
+
+
+```
+
+
+```{r plots, echo=FALSE}
+lcfm$Enzyme<-factor(lcfm$Enzyme, samps)
+ggplot(lcfm, aes(Enzyme, colour = UGI, Frequency)) + 
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+
+  ylab("% Live cells (out of \nsingle cell population)")+
+  theme(axis.text = element_text(size=20), axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+  facet_grid(rows = vars(Experiment))
+ggsave("figs/Livecellpops_experiment.png")
+ggplot(lcfm, aes(Enzyme, colour = UGI, freqnorm)) + geom_boxplot(outlier.shape = NA)+
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+ 
+  #geom_boxplot(alpha = 0.5)+
+  ylab("Normalised % Live cells (out of \nsingle cell population)")+
+  theme(axis.text = element_text(size=20), axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+
+ggplot(lcfm, aes(as.factor(Experiment),Frequency))+geom_boxplot()+geom_jitter()+
+  xlab("Experiment")+
+  ylab("% Live cells (out of \nsingle cell population)")+
+  theme(axis.text = element_text(size=20), axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+
+mcf$Enzyme<-factor(mcf$Enzyme, samps)
+ggplot(mcf, aes(Enzyme, colour = UGI, Frequency)) + 
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+ 
+  ylab(" %mCherry+ cells \n(out of live cells)")+#scale_y_continuous(trans = "log2",bre)+
+  theme(axis.text = element_text(size=20),axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+  facet_grid(rows = vars(Experiment))
+
+ggplot(mcf, aes(Enzyme, colour = UGI, mednorm)) +   geom_boxplot(outlier.shape = NA)+
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+ 
+  ylab("Normalised %mCherry+ cells \n(out of live cells)")+#scale_y_continuous(trans = "log2",bre)+
+  theme(axis.text = element_text(size=20), axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+
+
+
+gfmc$Enzyme<-factor(gfmc$Enzyme, samps)
+ggplot(gfmc, aes(Enzyme, colour = UGI, Frequency)) + 
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+ 
+  ylab(" %mCherry+ GFP+ cells \n(out of live cells)")+
+  theme(axis.text = element_text(size=20),axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+  facet_grid(rows = vars(Experiment))
+
+ggplot(gfmc,aes(Experiment, Frequency))+geom_point()
+ggplot(gfmc, aes(Enzyme, colour = UGI, mednorm)) + geom_boxplot(outlier.shape = NA)+
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+ 
+  ylab("Normalised %mCherry+ GFP+ \ncells (out of live cells)")+
+  theme(axis.text = element_text(size=20), axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+
+ggplot(gfmc, aes(Enzyme, colour = UGI, FreqCherry)) + 
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+ 
+  ylab(" %mCherry+ GFP+ cells \n(out of mCherry+ cells)")+
+  theme(axis.text = element_text(size=20),axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+  facet_grid(rows = vars(Experiment))
+
+ggplot(gfmc, aes(Enzyme, colour = UGI, FreqCherrynorm)) + geom_boxplot(outlier.shape = NA)+
+  geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5,alpha=0.5)+ 
+  ylab(" Normalised %mCherry+ GFP+ cells \n(out of mCherry+ cells)")+
+  theme(axis.text = element_text(size=20),axis.title = element_text(size=20), 
+        legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+
+
+
+```
+
+
+##GFP out of live cells
+
+```{r, echo =FALSE}
+
+# mCherryGFPANOVA_exp<-aov(Frequency~as.factor(Experiment),gfmc_ss)
+```
+
+
+```{r}
+# hist(residuals(mCherryGFPANOVA_exp))
+# 
+# shapiro.test(residuals(mCherryGFPANOVA_exp))
+# pander(kruskal.test(Frequency~as.factor(Experiment),gfmc_ss))
+# 
+# pander(summary(mCherryGFPANOVA_exp))
+# pander(TukeyHSD(mCherryGFPANOVA_exp))
+
+```
+
+```{r, echo =FALSE}
+
+
+```
+
+```{r}
+
+# mCherryGFPANOVA_exp<-aov(mednorm~as.factor(Experiment),gfmc_ss)
+# hist(residuals(mCherryGFPANOVA_exp))
+# kruskal.test(mednorm~as.factor(Experiment),gfmc_ss)
+# pander(summary(mCherryGFPANOVA_exp))
+
+
+```
+
+
+
+
+```{r}
+
+```
+
+```{r, echo=FALSE}
+# ggplot(gfmc, aes(Enzyme, colour = UGI, Frequency)) +
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab(" %mCherry+ GFP+ cells \n(out of live cells)")+#scale_y_continuous(trans = "log2",bre)+
+#   theme(axis.text = element_text(size=20),axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+#   facet_grid(rows = vars(Experiment))
+# #ggsave("figs/GFPpops_experiment.png")
+# 
+# ggplot(gfmc, aes(Enzyme, colour = UGI, mednorm)) + geom_boxplot(outlier.shape = NA)+
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab("Normalised %mCherry+ GFP+ \ncells (out of live cells)")+
+#   theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+# #ggsave("figs/GFPpops_experiment_comb.png")
+```
+
+
+##mCherry+GFP+ out of mCherry cells
+
+
+```{r, echo =FALSE}
+
+
+```
+
+
+```{r}
+# mCherryGFPANOVA_exp<-aov(FreqCherry~as.factor(Experiment),gfmc_ss)
+# hist(residuals(mCherryGFPANOVA_exp))
+# pander(shapiro.test(residuals(mCherryGFPANOVA_exp)))
+# pander(summary(mCherryGFPANOVA_exp))
+# pander(kruskal.test(FreqCherry~as.factor(Experiment),gfmc_ss))
+```
+
+
+
+
+
+
+
+```{r}
+
+# mCherryGFPANOVA_exp<-aov(FreqCherrynorm~as.factor(Experiment),gfmc_ss)
+# hist(residuals(mCherryGFPANOVA_exp))
+# pander(summary(mCherryGFPANOVA_exp))
+# pander(kruskal.test(FreqCherrynorm~as.factor(Experiment),gfmc_ss))
+
+```
+
+```{r,echo=FALSE}
+
+```
+
+
+```{r}
+# mCherryGFPANOVA<-aov(FreqCherrynorm~Enzyme*UGI,gfmc_ss)
+# plot(mCherryGFPANOVA, 1)
+# leveneTest(mednorm~Enzyme*UGI,gfmc_ss)
+# plot(mCherryGFPANOVA,2)
+# hist(residuals(mCherryGFPANOVA))
+# shapiro.test(residuals(mCherryGFPANOVA))
+# 
+# pander(summary(mCherryGFPANOVA))
+# pander(TukeyHSD(mCherryGFPANOVA))
+```
+
+
+```{r, echo =FALSE}
+# ggplot(gfmc, aes(Enzyme, colour = UGI, FreqCherry)) +
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab(" %mCherry+ GFP+ cells \n(out of mCherry+ cells)")+
+#   theme(axis.text = element_text(size=20),axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+#   facet_grid(rows = vars(Experiment))
+# #ggsave("figs/GFPpopsCherry_experiment.png")
+# ggplot(gfmc, aes(Enzyme, colour = UGI, FreqCherrynorm)) + geom_boxplot(outlier.shape = NA)+
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab(" Normalised %mCherry+ GFP+ cells \n(out of mCherry+ cells)")+
+#   theme(axis.text = element_text(size=20),axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+#ggsave("figs/GFPpopsCherry_experiment_comb.png")
+
+```
+
+```{r, echo =FALSE}
+# ggplot(mcf, aes(Enzyme, colour = UGI, Frequency)) +
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab(" %mCherry+ cells \n(out of live cells)")+#scale_y_continuous(trans = "log2",bre)+
+#   theme(axis.text = element_text(size=20),axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+#   facet_grid(rows = vars(Experiment))
+# ggsave("figs/mCherrypops_experiment.png")
+# ggplot(mcf, aes(Enzyme, colour = UGI, mednorm)) +   geom_boxplot(outlier.shape = NA)+
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab("Normalised %mCherry+ cells \n(out of live cells)")+#scale_y_continuous(trans = "log2",bre)+
+#   theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+# ggsave("figs/mCherrypops_experiment_comb.png")
+
+# 
+# ggplot(mcf, aes(as.factor(Experiment),Frequency))+geom_boxplot()+geom_jitter()+
+#   xlab("Experiment")+
+#   ylab( "%mCherry+ cells(out of live cells)")+
+#   theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+# ggsave("figs/mCherry_lc_byExperiment.png")
+# 
+# tuk<-TukeyHSD(aov(mednorm~Enzyme*UGI,mcf_ss))
+# gfmc$Enzyme<-factor(gfmc$Enzyme, samps)
+# ggplot(gfmc, aes(Enzyme, colour = UGI, Frequency)) +
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab(" %mCherry+ GFP+ cells \n(out of live cells)")+#scale_y_continuous(trans = "log2",bre)+
+#   theme(axis.text = element_text(size=20),axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+#   facet_grid(rows = vars(Experiment))
+# ggsave("figs/GFPpops_experiment.png")
+# ggplot(gfmc,aes(Experiment, Frequency))+geom_point()
+# ggplot(gfmc, aes(Enzyme, colour = UGI, mednorm)) + geom_boxplot(outlier.shape = NA)+
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab("Normalised %mCherry+ GFP+ \ncells (out of live cells)")+
+#   theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+# ggsave("figs/GFPpops_experiment_comb.png")
+# summary(aov(Frequency~Experiment,gfmc))
+# TukeyHSD(aov(Frequency~UGI*Enzyme,gfmc))
+# TukeyHSD(aov(Frequency~as.factor(Experiment),gfmc))
+# ggplot(gfmc, aes(as.factor(Experiment),Frequency))+geom_boxplot()+geom_jitter()+
+#   xlab("Experiment")+
+#   ylab( "%mCherry+ GFP+ cells \n(out of live cells)")+
+#   theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+# ggsave("figs/GFPcells_lc_byExperiment.png")
+# gfmc_s<-subset(GFPfreqsmCherry, Enzyme %in% c("A3B","A3Bm","A3A","A3Am") )
+# 
+# 
+# 
+# 
+# mm<-tuk[[3]]
+# mm[mm[,4]<0.05,]
+# 
+# 
+# 
+# 
+# ggplot(gfmc, aes(Enzyme, colour = UGI, FreqCherry)) +
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab(" %mCherry+ GFP+ cells \n(out of mCherry+ cells)")+
+#   theme(axis.text = element_text(size=20),axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))+
+#   facet_grid(rows = vars(Experiment))
+# ggsave("figs/GFPpopsCherry_experiment.png")
+# ggplot(gfmc, aes(Enzyme, colour = UGI, FreqCherrynorm)) + geom_boxplot(outlier.shape = NA)+
+#   geom_point(aes(group = UGI),  position = position_jitterdodge(jitter.width = .1, dodge.width = 1),size=5)+
+#   ylab(" Normalised %mCherry+ GFP+ cells \n(out of mCherry+ cells)")+
+#   theme(axis.text = element_text(size=20),axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+# ggsave("figs/GFPpopsCherry_experiment_comb.png")
+# summary(aov(FreqCherrynorm~Enzyme*UGI,gfmc))
+# summary(aov(mednorm~Enzyme*UGI,gfmc))
+# TukeyHSD(aov(FreqCherrynorm~Enzyme*UGI,gfmc))
+# TukeyHSD(aov(mednorm~Enzyme*UGI,gfmc))
+# TukeyHSD(aov(FreqCherry~as.factor(Experiment),gfmc))
+# ggplot(gfmc, aes(as.factor(Experiment),FreqCherry))+geom_boxplot()+geom_jitter()+
+#   xlab("Experiment")+
+#   ylab( "%mCherry+ GFP+ cells \n(out of mCherry+ cells)")+
+#   theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+#         legend.text = element_text(size=15),legend.title = element_text(size=20), axis.text.x = element_text(angle=45,hjust=1))
+# ggsave("figs/GFPcells_mc_byExperiment.png")
+# gfmc_s<-subset(GFPfreqsmCherry, Enzyme %in% c("A3B","A3Bm","A3A","A3Am") )
+# 
+# table(gfmc$Enzyme)
+# gfmc_s<-subset(GFPfreqsmCherry, Enzyme %in% samps[2:5] )
+# a<-aov(FreqCherrynorm~UGI*Enzyme, gfmc_s)
+# summary(a)
+# TukeyHSD(a)
+# gfmc
+
+```
+
+# 
+
+## Live cell frequency by experiment
+
+
+
+
+```{r echo=FALSE}
+# ggplot(LiveCellFreqs_combined_ss, aes(Experiment, Frequency))+ 
+#   geom_jitter(size=5)+
+#   geom_boxplot(alpha=0.5, outlier.shape=NA)+
+#     ylab("% Live cells (out of \nsingle cell population)")+
+#     theme(axis.text = element_text(size=20), axis.title = element_text(size=20),
+#     legend.text = element_text(size=15),legend.title = element_text(size=20),
+#     axis.text.x = element_text(angle=45,hjust=1))
+# LiveCellANOVA_exp<-aov(Frequency~as.factor(Experiment),LiveCellFreqs_combined_ss)
+```
+
+
+```{r}
+
+
+# pander(summary(LiveCellANOVA_exp))
+# pander(TukeyHSD(LiveCellANOVA_exp))
+
+```
+
+ANOVA
+
+```{r echo = FALSE}
+# LiveCellANOVA<-aov(freqnorm~Enzyme*UGI,LiveCellFreqs_combined_ss)
+```
+
+
+```{r}
+# pander(summary(LiveCellANOVA))
+# pander(TukeyHSD(LiveCellANOVA))
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
