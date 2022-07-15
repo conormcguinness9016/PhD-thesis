@@ -1,0 +1,25 @@
+flowcell	lane	barcode	sample	platename	row	column	libraryprepid	counter	comment	enzyme	species	numberofbarcodes	bifo	control	fastq_link
+CECCRANXX	4	GATCGGCG	E1D7	GBS2093	D	2	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	GGTGCGCA	A1A3	GBS2093	D	3	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	AGCGTGCA	A2D3	GBS2093	E	1	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	ATAACAGA	E2B5	GBS2093	E	2	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	CGCTGACG	A1A12	GBS2093	E	3	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	GAATGCGG	A2D3	GBS2093	F	1	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	TGTCTGAA	E2B5	GBS2093	F	2	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	GTCAGTCG	A1A12	GBS2093	F	3	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	CCTAACGCA	E1A11	GBS2093	G	1	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	AGAATCACA	E2F2	GBS2093	G	2	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	CCTTAGCCA	GBSNEG5	GBS2093	G	3	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	AGCGGATGA	E1A11	GBS2093	H	1	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	CCAGTAACA	GBSNEG6	GBS2093	H	3	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	CCACCGT	A1A2	GBS2093	A	1	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	GAACAAT	E1B7	GBS2093	A	2	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	AACCGAT	E1D12	GBS2093	A	3	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	TTACCTG	A1A2	GBS2093	B	1	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	TGTCACT	E1B7	GBS2093	B	2	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	TCTGAAT	E1D12	GBS2093	B	3	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	TATCTAG	A1C10	GBS2093	C	1	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	TGCGAGT	E1D7	GBS2093	C	2	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	GTGTCAA	A1A3	GBS2093	C	3	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	TTCGCACA	A1C10	GBS2093	D	1	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
+CECCRANXX	4	GAGAACTAA	E2F2	GBS2093	H	2	1429			PstI-MspI	MOUSE	216			/dataset/hiseq/active/fastq-link-farm/SQ1429_CECCRANXX_s_4_fastq.txt.gz
