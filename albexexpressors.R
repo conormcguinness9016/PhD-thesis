@@ -1,0 +1,11 @@
+ALBEXdatasets<-c("Yan_et_al_2013_pre_implantation_embryos","Petropolous_et_al_2016")
+dir.create("ALBEXexpressors")
+ALBEXexpressors<-unlist(lapply(ALBEXdatasets, function(i){
+  files<-list.files(i, pattern = "^iso*", full.names =TRUE)
+  print(files)
+  isotable<-read.delim(files, header = FALSE)
+  ssisotable<-subset(isotable, V9>0)
+  exors<-as.character(ssisotable$V14)
+  paste0("../",i,"/BAMfiles/STAR/",exors,"/Aligned.sortedByCoord.out.bam")
+}))
+write(noquote(unique(ALBEXexpressors)), "ALBEXexpressors/ALBEXexpressors.txt")
