@@ -1,0 +1,8 @@
+library(reticulate)
+library(SigProfilerExtractorR)
+library(SigProfilerMatrixGeneratorR)
+library(SigProfilerPlottingR)
+b<-SigProfilerMatrixGeneratorR("BRCA", "mm10", "/Volumes/archive/cancergeneticslab/ConorM/GBS_irrad/totalVCFhets/", plot=T, exome=F, bed_file=NULL, chrom_based=F, tsb_stat=F, seqInfo=F, cushion=100)
+plotSBS(b + "96", "sigprofiler/","BRCA", "96",FALSE)
+b<-SigProfilerMatrixGeneratorR("BRCA", "mm10", "/Volumes/archive/cancergeneticslab/ConorM/GBS_irrad/uniqueVCFhets/", plot=T, exome=F, bed_file=NULL, chrom_based=F, tsb_stat=F, seqInfo=F, cushion=100)
+plotSBS(b + "96", "sigprofiler/","BRCA", "96",FALSE)
